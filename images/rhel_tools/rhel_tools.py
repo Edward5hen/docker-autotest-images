@@ -14,6 +14,7 @@ Prerequisites
 
 *   Clean host without rhel-tools container ever installed
 """
+import re
 
 from autotest.client import utils
 from dockertest.subtest import SubSubtest
@@ -27,43 +28,64 @@ class rhel_tools(SubSubtestCaller):
     config_section = 'images/rhel_tools'
 
 
-class load(SubSubtest):
+class rhel_tools_base(SubSubtest):
 
     def initialize(self):
-        super(load, self).initialize()
-        self.sub_stuff['load_result'] = None
+        super(rhel_tools_base, self).initialize()
+        self.sub_stuff['img_name'] = None
+        self.regx = '[0-9]{1,3}'
 
     def load_image(self, location):
-        cmd = 'cat %s | sudo docker load' % location
-        cmd_result = utils.run(cmd, timeout=300, ignore_status=True)
-        return cmd_result
+        if not self.check_loaded():
+            cmd = 'cat %s | sudo docker load' % location
+            utils.run(cmd, timeout=300, ignore_status=True)
+            self.check_loaded()
+        else:
+            self.logdebug('images does not need to load')
 
-    def run_once(self):
-        img_stored_location = self.config['img_stored_location']
-        cmd_result = self.load_image(img_stored_location)
-        self.sub_stuff['load_result'] = cmd_result
+    def check_loaded(self):
+        images = DockerImages(self)
+        cmd = 'sudo docker inspect %s | grep -i "\\"release\\":" | head -1'
+        for image_name in images.list_imgs_full_name():
+            if 'rhel-tools' in image_name:
+                release_line = utils.run(cmd % image_name, timeout=30)
+                rst = re.search(self.regx, release_line.stdout)
+                if rst is not None:
+                    if str(self.config['rls_ver']) == rst.group():
+                        self.sub_stuff['img_name'] = image_name
+                        return True
+                else:
+                    raise ValueError('No digital release info found!')
+        return False
 
-    def postprocess(self):
-        self.failif_ne(self.sub_stuff['load_result'].exit_status, 0,
-                       'Fail to load image!')
+    def format_output(self, output):
+        """
+        Output of a linux command often includes tabs and spaces,
+        this method tries to convert output to python lists
+        """
+        converted = []
+        tmp = []
+        for eachLine in output.split('\n'):
+            tmp = re.split('\s\s+|\t+', eachLine)
+            # Sometimes returned list need to change to set
+            tmp = tuple(tmp)
+            converted.append(tmp)
+        return converted
 
 
-class run_img(SubSubtest):
+class run_img(rhel_tools_base):
 
     def initialize(self):
         super(run_img, self).initialize()
         self.sub_stuff['img_name'] = None
         self.sub_stuff['run_rst'] = None
+        self.load_image(self.config['img_stored_location'])
 
     def run_once(self):
         super(run_img, self).run_once()
-        imgs = DockerImages(self)
-        for img_name in imgs.list_imgs_full_name():
-            if 'rhel-tools' in img_name:
-                self.sub_stuff['img_name'] = img_name
         run_cmd = "sudo atomic run %s" % self.sub_stuff['img_name']
         try:
-            utils.run(run_cmd, timeout=5)
+            utils.run(run_cmd, timeout=30)
         except error.CmdError, exc:
             err = exc.result_obj.stdout
             self.sub_stuff['run_rst'] = err

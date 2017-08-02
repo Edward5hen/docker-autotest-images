@@ -24,12 +24,13 @@ Prerequisites
 """
 
 from autotest.client import utils
-from dockertest.subtest import SubSubtest
 from dockertest.images import DockerImages
-import time
+from rhel_tools import rhel_tools_base
+from dockertest.containers import DockerContainers
+from autotest.client.shared import error
 
 
-class run_options(SubSubtest):
+class run_options(rhel_tools_base):
 
     def initialize(self):
         super(run_options, self).initialize()
@@ -38,6 +39,7 @@ class run_options(SubSubtest):
         self.sub_stuff['run_dir_rst_ctn'] = None
         self.sub_stuff['run_dir_rst_host'] = None
         self.sub_stuff['var_log_rst_ctn'] = None
+        self.sub_stuff['var_log_rst_host'] = None
         self.sub_stuff['root_rst_host'] = None
         self.sub_stuff['host_rst_ctn'] = None
 
@@ -51,24 +53,26 @@ class run_options(SubSubtest):
         self.sub_stuff['net_rst_ctn'] = ''
         self.sub_stuff['pid_rst_host'] = ''
         self.sub_stuff['pid_rst_ctn'] = ''
+        self.load_image(self.config['img_stored_location'])
+
+        # If container is not started, run the image.
+        ctns = DockerContainers(self)
+        run_cmd = "sudo atomic run %s" % self.sub_stuff['img_name']
+        if 'rhel-tools-docker' not in ctns.list_container_names():
+            try:
+                utils.run(run_cmd, timeout=30)
+            except error.CmdError, exc:
+                err = exc.result_obj.stdout
+                if err.strip().endswith('#'):
+                    self.loginfo('Container is being started!')
 
     def list_mounted_dir(self):
         dcr_exec_cmd = 'sudo docker exec rhel-tools-docker '
         ls_run_cmd = 'ls -go /run'
-        self.sub_stuff['run_dir_rst_ctn'] = utils.run(
-                dcr_exec_cmd + ls_run_cmd)
-        self.sub_stuff['run_dir_rst_host'] = utils.run(ls_run_cmd)
-
-        ls_var_log_cmd = 'ls -go /etc/sysconfig/sysstat.ioconf'
-        self.sub_stuff['var_log_rst_ctn'] = utils.run(
-                dcr_exec_cmd + ls_var_log_cmd)
-        self.sub_stuff['var_log_rst_host'] = utils.run(
-                ls_var_log_cmd)
-
-        host_cmd = 'ls -go /host'
-        root_cmd = 'ls -go /'
-        self.sub_stuff['host_rst_ctn'] = utils.run(dcr_exec_cmd + host_cmd)
-        self.sub_stuff['root_rst_host'] = utils.run(root_cmd)
+        self.sub_stuff['run_dir_rst_ctn'] = set(self.format_output(
+            utils.run(dcr_exec_cmd + ls_run_cmd).stdout)[1:])
+        self.sub_stuff['run_dir_rst_host'] = set(self.format_output(
+            utils.run(ls_run_cmd).stdout)[1:])
 
     def echo_env_virs(self):
         dcr_exec_cmd = 'docker exec rhel-tools-docker '
@@ -77,11 +81,11 @@ class run_options(SubSubtest):
         echo_image_cmd = "bash -c 'echo $IMAGE'"
 
         self.sub_stuff['env_vir_name'] = utils.run(
-                dcr_exec_cmd + echo_name_cmd).stdout.strip()
+            dcr_exec_cmd + echo_name_cmd).stdout.strip()
         self.sub_stuff['env_vir_image'] = utils.run(
-                dcr_exec_cmd + echo_image_cmd).stdout.strip()
+            dcr_exec_cmd + echo_image_cmd).stdout.strip()
         self.sub_stuff['env_vir_host'] = utils.run(
-                dcr_exec_cmd + echo_host_cmd).stdout.strip()
+            dcr_exec_cmd + echo_host_cmd).stdout.strip()
 
     def check_env_vir(self):
         # If testing by loading the image, NAME viriable is rhel-tools-docker
@@ -97,21 +101,25 @@ class run_options(SubSubtest):
                        'Env viriable HOST is set wrongly!')
 
     def check_mounted_dir(self):
-        self.failif_ne(self.sub_stuff['dir_run_rst_ctn'].stdout,
-                       self.sub_stuff['dir_run_rst_host'].stdout,
-                       '/run mounted failed!')
-        self.failif_ne(self.sub_stuff['var_log_rst_ctn'].stdout,
-                       self.sub_stuff['var_log_rst_host'].stdout,
-                       '/var/log mounted failed!')
-        self.failif_ne(self.sub_stuff['host_rst_ctn'].stdout,
-                       self.sub_stuff['root_rst_host'].stdout,
-                       '/host mounted failed!')
+        can_pass = 0
+        diff0 = self.sub_stuff['run_dir_rst_ctn'] -\
+            self.sub_stuff['run_dir_rst_host']
+        diff1 = self.sub_stuff['run_dir_rst_host'] -\
+            self.sub_stuff['run_dir_rst_ctn']
+        # Only secrets folder is different
+        if len(diff0) == len(diff1) == 1 and\
+           'secrets' in ''.join(tuple(diff0)[0]) and\
+           'secrets' in ''.join(tuple(diff1)[0]):
+            can_pass = 1
+        self.failif_ne(can_pass, 1, '/run mounted failed!')
 
     def check_ipc(self):
-        cmd_ctn = 'sudo docker exec rhel-tools-docker ipcs'
-        cmd_host = 'ipcs'
-        self.sub_stuff['ipc_rst_ctn'] = utils.run(cmd_ctn)
-        self.sub_stuff['ipc_rst_host'] = utils.run(cmd_host)
+        cmd_ctn = 'sudo docker exec rhel-tools-docker ipcs -u'
+        cmd_host = 'ipcs -u'
+        self.sub_stuff['ipc_rst_ctn'] =\
+            self.format_output(utils.run(cmd_ctn).stdout)
+        self.sub_stuff['ipc_rst_host'] =\
+            self.format_output(utils.run(cmd_host).stdout)
         self.failif_ne(self.sub_stuff['ipc_rst_ctn'],
                        self.sub_stuff['ipc_rst_host'],
                        'Different result of ipcs from host and container')
@@ -119,42 +127,50 @@ class run_options(SubSubtest):
     def check_net(self):
         cmd_ctn = 'sudo docker exec rhel-tools-docker ifconfig'
         cmd_host = 'ifconfig'
-        self.sub_stuff['net_rst_ctn'] = utils.run(cmd_ctn)
-        self.sub_stuff['net_rst_host'] = utils.run(cmd_host)
+        self.sub_stuff['net_rst_ctn'] =\
+            self.format_output(utils.run(cmd_ctn).stdout)
+        self.sub_stuff['net_rst_host'] =\
+            self.format_output(utils.run(cmd_host).stdout)
         self.failif_ne(self.sub_stuff['net_rst_ctn'],
                        self.sub_stuff['net_rst_host'],
                        'Different result of ifconfig from host and container')
+
+    def check_process(self):
+        cmd_ctn = 'sudo docker exec rhel-tools-docker ps -Ao pid,fname'
+        cmd_host = 'ps -Ao pid,fname'
+        can_pass = 0
+        self.sub_stuff['pid_rst_ctn'] =\
+            set(self.format_output(utils.run(cmd_ctn).stdout))
+        self.sub_stuff['pid_rst_host'] =\
+            set(self.format_output(utils.run(cmd_host).stdout))
+        diff = self.sub_stuff['pid_rst_host'] - self.sub_stuff['pid_rst_ctn']
+        # Only process diff from host to container is the "ps".
+        if len(diff) == 1 and 'ps' in tuple(diff)[0][0]:
+            can_pass = 1
+        # Count of process in container is always one more than on host
+        self.failif_ne(can_pass, 1, 'Different result of process listing\
+            from host and container')
+
+    def check_name(self):
+        cmd = 'sudo docker ps --format {{.Image}}hope-not-exist{{.Names}}\
+               | grep %s' % self.sub_stuff['img_name']
+        result = utils.run(cmd).stdout.split('hope-not-exist')[-1]
+        self.failif(result.strip() not in ['rhel-tools-docker', 'rhel-tools'],
+                    'Container name is not rhel-tools-docker or rhel-tools')
 
     def run_once(self):
         """
         Called to run test
         """
         super(run_options, self).run_once()
-        imgs = DockerImages(self)
-        for img_name in imgs.list_imgs_full_name():
-            if 'sadc' in img_name:
-                self.sub_stuff['img_name'] = img_name
-        run_cmd = "sudo atomic run %s" % self.sub_stuff['img_name']
-        self.sub_stuff['run_result'] = utils.run(run_cmd, timeout=10)
-        time.sleep(5)
-
-        ctn_name_cmd = "sudo docker ps | grep sadc | awk '{print $10}'"
-        self.sub_stuff['ctn_name_rst'] = utils.run(ctn_name_cmd, timeout=3)
-
         self.list_mounted_dir()
         self.echo_env_virs()
 
     def postprocess(self):
         super(run_options, self).postprocess()
-        # If it's tested by loading the image, container name is rsyslog-docker
-        # If it's tested by pulling the image, container name is rsyslog
-        self.failif_ne(self.sub_stuff['run_result'].exit_status, 0,
-                       "image runs failed with atomic commands!")
-        self.failif_not_in(self.sub_stuff['ctn_name_rst'].stdout.strip(),
-                           ['sadc', 'sadc-docker'],
-                           "Container is wrongly named!")
-
         self.check_mounted_dir()
+        self.check_name()
         self.check_env_vir()
         self.check_ipc()
         self.check_net()
+        self.check_process()
