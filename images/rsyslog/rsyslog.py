@@ -24,11 +24,13 @@ Prerequisites
 
 *   Clean host without rsyslog container ever installed
 """
+import re
 
 from autotest.client import utils
 from dockertest.subtest import SubSubtest
 from dockertest.subtest import SubSubtestCaller
 from dockertest.images import DockerImages
+from autotest.client.shared import error
 
 
 class rsyslog(SubSubtestCaller):
@@ -36,31 +38,69 @@ class rsyslog(SubSubtestCaller):
     config_section = 'images/rsyslog'
 
 
-class load(SubSubtest):
+class rsyslog_base(SubSubtest):
 
     def initialize(self):
-        super(load, self).initialize()
-        self.sub_stuff['load_result'] = None
+        super(rsyslog_base, self).initialize()
+        self.sub_stuff['img_name'] = None
+        self.regx = '[0-9]{1,3}'
 
     def load_image(self, location):
-        cmd = 'cat %s | sudo docker load' % location
-        cmd_result = utils.run(cmd, timeout=300, ignore_status=True)
-        return cmd_result
+        if not self.check_loaded():
+            cmd = 'cat %s | sudo docker load' % location
+            utils.run(cmd, timeout=300, ignore_status=True)
+            self.check_loaded()
+        else:
+            self.loginfo('images does not need to load')
 
-    def run_once(self):
-        img_stored_location = self.config['img_stored_location']
-        cmd_result = self.load_image(img_stored_location)
-        self.sub_stuff['load_result'] = cmd_result
+    def check_loaded(self):
+        images = DockerImages(self)
+        cmd = 'sudo docker inspect %s | grep -i "\\"release\\":" | head -1'
+        for image_name in images.list_imgs_full_name():
+            if 'rsyslog' in image_name:
+                release_line = utils.run(cmd % image_name, timeout=30)
+                rst = re.search(self.regx, release_line.stdout)
+                if rst is not None:
+                    if str(self.config['rls_ver']) == rst.group():
+                        self.sub_stuff['img_name'] = image_name
+                        return True
+                else:
+                    raise ValueError('No digital release info found!')
+        return False
 
-    def postprocess(self):
-        self.failif_ne(self.sub_stuff['load_result'].exit_status, 0,
-                       'Fail to load image!')
+    def get_installed(self):
+        """ Have to be used after load_image """
+        cmd = 'sudo atomic install %s' % self.sub_stuff['img_name']
+        utils.run(cmd, timeout=120)
+
+    def format_output(self, output):
+        """
+        Output of a linux command often includes tabs and spaces,
+        this method tries to convert output to python lists
+        """
+        converted = []
+        tmp = []
+        for eachLine in output.split('\n'):
+            tmp = re.split('\s\s+|\t+', eachLine)
+            # Sometimes returned list need to change to set
+            tmp = tuple(tmp)
+            converted.append(tmp)
+        return converted
 
 
-class install(SubSubtest):
+class install(rsyslog_base):
 
     def initialize(self):
         super(install, self).initialize()
+        self.load_image(self.config['img_stored_location'])
+        # Uninstall the image first, if there was some older version installed
+        try:
+            utils.run('sudo atomic uninstall %s' % self.sub_stuff['img_name'],
+                      timeout=30)
+        except error.CmdError:
+            self.loginfo('Uninstall failed!')
+
+        self.loginfo(self.sub_stuff['img_name'])
         self.sub_stuff['install_result'] = None
         self.sub_stuff['dir_exists'] = None
         self.sub_stuff['cfg_exists'] = None
@@ -68,10 +108,9 @@ class install(SubSubtest):
 
     def run_once(self):
         super(install, self).run_once()
-        imgs = DockerImages(self)
-        img_name = imgs.list_imgs_full_name()[0]
-        ins_result = utils.run('sudo atomic install %s' % img_name,
-                               timeout=60, ignore_status=True)
+        ins_result = utils.run(
+            'sudo atomic install %s' % self.sub_stuff['img_name'],
+            timeout=60, ignore_status=True)
         self.sub_stuff['install_result'] = ins_result
 
         # List /etc/pki/rsyslog dir

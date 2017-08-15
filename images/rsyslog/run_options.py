@@ -23,18 +23,20 @@ Prerequisites
 
 *   rsyslog container is installed
 """
-
-from autotest.client import utils
-from dockertest.subtest import SubSubtest
-from dockertest.images import DockerImages
 import time
 
+from autotest.client import utils
+from rsyslog import rsyslog_base
 
-class run_options(SubSubtest):
+
+class run_options(rsyslog_base):
 
     def initialize(self):
         super(run_options, self).initialize()
-        self.sub_stuff['img_name'] = ''
+        # Make sure image is loaded and installed
+        self.load_image(self.config['img_stored_location'])
+        self.get_installed()
+
         self.sub_stuff['run_result'] = None
         self.sub_stuff['ctn_name_rst'] = None
         self.sub_stuff['etc_pki_rsyslog_rst_ctn'] = None
@@ -58,42 +60,47 @@ class run_options(SubSubtest):
     def list_mounted_dir(self):
         dcr_exec_cmd = 'sudo docker exec rsyslog-docker '
         etc_pki_rsyslog_cmd = 'ls -go /etc/pki/rsyslog'
-        self.sub_stuff['etc_pki_rsyslog_rst_ctn'] = utils.run(
-                dcr_exec_cmd + etc_pki_rsyslog_cmd)
-        self.sub_stuff['etc_pki_rsyslog_rst_host'] = utils.run(
-                etc_pki_rsyslog_cmd)
+        self.sub_stuff['etc_pki_rsyslog_rst_ctn'] = self.format_output(
+            utils.run(dcr_exec_cmd + etc_pki_rsyslog_cmd).stdout)
+        self.sub_stuff['etc_pki_rsyslog_rst_host'] = self.format_output(
+            utils.run(etc_pki_rsyslog_cmd).stdout)
 
         etc_rsyslog_conf_cmd = 'ls -go /etc/rsyslog.conf'
-        self.sub_stuff['etc_rsyslog_conf_rst_ctn'] = utils.run(
-                dcr_exec_cmd + etc_rsyslog_conf_cmd)
-        self.sub_stuff['etc_rsyslog_conf_rst_host'] = utils.run(
-                etc_rsyslog_conf_cmd)
+        self.sub_stuff['etc_rsyslog_conf_rst_ctn'] = self.format_output(
+            utils.run(dcr_exec_cmd + etc_rsyslog_conf_cmd).stdout)
+        self.sub_stuff['etc_rsyslog_conf_rst_host'] = self.format_output(
+            utils.run(etc_rsyslog_conf_cmd).stdout)
 
         etc_rsyslog_d_cmd = 'ls -go /etc/rsyslog.d'
-        self.sub_stuff['etc_rsyslog_d_rst_ctn'] = utils.run(
-                dcr_exec_cmd + etc_rsyslog_d_cmd)
-        self.sub_stuff['etc_rsyslog_d_rst_host'] = utils.run(etc_rsyslog_d_cmd)
+        self.sub_stuff['etc_rsyslog_d_rst_ctn'] = self.format_output(
+            utils.run(dcr_exec_cmd + etc_rsyslog_d_cmd).stdout)
+        self.sub_stuff['etc_rsyslog_d_rst_host'] = self.format_output(
+            utils.run(etc_rsyslog_d_cmd).stdout)
 
+        # Sometimes the order is different
         var_log_cmd = 'ls -go /var/log'
-        self.sub_stuff['var_log_rst_ctn'] = utils.run(
-                dcr_exec_cmd + var_log_cmd)
-        self.sub_stuff['var_log_rst_host'] = utils.run(var_log_cmd)
+        self.sub_stuff['var_log_rst_ctn'] = set(self.format_output(
+            utils.run(dcr_exec_cmd + var_log_cmd).stdout))
+        self.sub_stuff['var_log_rst_host'] = set(self.format_output(
+            utils.run(var_log_cmd).stdout))
 
         var_lib_rsyslog_cmd = 'ls -go /var/lib/rsyslog'
-        self.sub_stuff['var_lib_rsyslog_rst_ctn'] = utils.run(
-                dcr_exec_cmd + var_lib_rsyslog_cmd)
-        self.sub_stuff['var_lib_rsyslog_rst_host'] = utils.run(
-                var_lib_rsyslog_cmd)
+        self.sub_stuff['var_lib_rsyslog_rst_ctn'] = self.format_output(
+            utils.run(dcr_exec_cmd + var_lib_rsyslog_cmd).stdout)
+        self.sub_stuff['var_lib_rsyslog_rst_host'] = self.format_output(
+            utils.run(var_lib_rsyslog_cmd).stdout)
 
         dir_run_cmd = 'ls -go /run'
-        self.sub_stuff['run_rst_ctn'] = utils.run(dcr_exec_cmd + dir_run_cmd)
-        self.sub_stuff['run_rst_host'] = utils.run(dir_run_cmd)
+        self.sub_stuff['run_rst_ctn'] = set(self.format_output(
+            utils.run(dcr_exec_cmd + dir_run_cmd).stdout)[1:])
+        self.sub_stuff['run_rst_host'] = set(self.format_output(
+            utils.run(dir_run_cmd).stdout)[1:])
 
         etc_machine_id_cmd = 'ls -go /etc/machine-id'
-        self.sub_stuff['etc_machine_id_rst_ctn'] = utils.run(
-                dcr_exec_cmd + etc_machine_id_cmd)
-        self.sub_stuff['etc_machine_id_rst_host'] = utils.run(
-                etc_machine_id_cmd)
+        self.sub_stuff['etc_machine_id_rst_ctn'] = self.format_output(
+            utils.run(dcr_exec_cmd + etc_machine_id_cmd).stdout)
+        self.sub_stuff['etc_machine_id_rst_host'] = self.format_output(
+            utils.run(etc_machine_id_cmd).stdout)
 
     def echo_env_virs(self):
         dcr_exec_cmd = 'docker exec rsyslog-docker '
@@ -101,9 +108,9 @@ class run_options(SubSubtest):
         echo_image_cmd = "bash -c 'echo $IMAGE'"
 
         self.sub_stuff['env_vir_name'] = utils.run(
-                dcr_exec_cmd + echo_name_cmd).stdout.strip()
+            dcr_exec_cmd + echo_name_cmd).stdout.strip()
         self.sub_stuff['env_vir_image'] = utils.run(
-                dcr_exec_cmd + echo_image_cmd).stdout.strip()
+            dcr_exec_cmd + echo_image_cmd).stdout.strip()
 
     def check_env_vir(self):
         # If testing by loading the image, NAME viriable is rsyslog-docker
@@ -114,37 +121,43 @@ class run_options(SubSubtest):
                     'Env viriable IMAGE is set wrongly!')
 
     def check_mounted_dir(self):
-        self.failif_ne(self.sub_stuff['etc_pki_rsyslog_rst_ctn'].stdout,
-                       self.sub_stuff['etc_pki_rsyslog_rst_host'].stdout,
+        self.failif_ne(self.sub_stuff['etc_pki_rsyslog_rst_ctn'],
+                       self.sub_stuff['etc_pki_rsyslog_rst_host'],
                        '/etc/pki/rsyslog mounted failed!')
-        self.failif_ne(self.sub_stuff['etc_rsyslog_conf_rst_ctn'].stdout,
-                       self.sub_stuff['etc_rsyslog_conf_rst_host'].stdout,
+        self.failif_ne(self.sub_stuff['etc_rsyslog_conf_rst_ctn'],
+                       self.sub_stuff['etc_rsyslog_conf_rst_host'],
                        '/etc/rsyslog.conf mounted failed!')
-        self.failif_ne(self.sub_stuff['etc_rsyslog_d_rst_ctn'].stdout,
-                       self.sub_stuff['etc_rsyslog_d_rst_host'].stdout,
+        self.failif_ne(self.sub_stuff['etc_rsyslog_d_rst_ctn'],
+                       self.sub_stuff['etc_rsyslog_d_rst_host'],
                        '/etc/rsyslog.d mounted failed!')
-        self.failif_ne(self.sub_stuff['var_lib_rsyslog_rst_ctn'].stdout,
-                       self.sub_stuff['var_lib_rsyslog_rst_host'].stdout,
+        self.failif_ne(self.sub_stuff['var_lib_rsyslog_rst_ctn'],
+                       self.sub_stuff['var_lib_rsyslog_rst_host'],
                        '/var/lib/rsyslog mounted failed!')
-        self.failif_ne(self.sub_stuff['var_log_rst_ctn'].stdout,
-                       self.sub_stuff['var_log_rst_host'].stdout,
+        self.failif_ne(self.sub_stuff['var_log_rst_ctn'],
+                       self.sub_stuff['var_log_rst_host'],
                        '/var/log mounted failed!')
-        self.failif_ne(self.sub_stuff['run_rst_ctn'].stdout,
-                       self.sub_stuff['run_rst_host'].stdout,
-                       '/run mounted failed!')
-        self.failif_ne(self.sub_stuff['etc_machine_id_rst_ctn'].stdout,
-                       self.sub_stuff['etc_machine_id_rst_host'].stdout,
+        self.failif_ne(self.sub_stuff['etc_machine_id_rst_ctn'],
+                       self.sub_stuff['etc_machine_id_rst_host'],
                        '/etc/machine-id mounted failed!')
+
+        # Check mounted dir /run
+        can_pass = 0
+        diff0 = self.sub_stuff['run_rst_ctn'] -\
+            self.sub_stuff['run_rst_host']
+        diff1 = self.sub_stuff['run_rst_host'] -\
+            self.sub_stuff['run_rst_ctn']
+        # Only secrets folder is different
+        if len(diff0) == len(diff1) == 1 and\
+           'secrets' in ''.join(tuple(diff0)[0]) and\
+           'secrets' in ''.join(tuple(diff1)[0]):
+            can_pass = 1
+        self.failif_ne(can_pass, 1, '/run mounted failed!')
 
     def run_once(self):
         """
         Called to run test
         """
         super(run_options, self).run_once()
-        imgs = DockerImages(self)
-        for img_name in imgs.list_imgs_full_name():
-            if 'rsyslog' in img_name:
-                self.sub_stuff['img_name'] = img_name
         run_cmd = "sudo atomic run %s" % self.sub_stuff['img_name']
         self.sub_stuff['run_result'] = utils.run(run_cmd, timeout=10)
         time.sleep(5)
