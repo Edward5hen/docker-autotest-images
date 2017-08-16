@@ -77,9 +77,7 @@ class rsyslog_base(SubSubtest):
         cmd_ps = 'sudo docker ps --format={{.Names}}'
         cmd_run = 'sudo atomic run %s' % self.sub_stuff['img_name']
         self.get_installed()
-        self.loginfo(utils.run(cmd_ps).stdout)
         if 'rsyslog' not in utils.run(cmd_ps).stdout:
-            self.loginfo('hahahahahahaha')
             utils.run(cmd_run, timeout=120)
 
     def format_output(self, output):
