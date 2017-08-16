@@ -73,6 +73,15 @@ class rsyslog_base(SubSubtest):
         cmd = 'sudo atomic install %s' % self.sub_stuff['img_name']
         utils.run(cmd, timeout=120)
 
+    def get_run(self):
+        cmd_ps = 'sudo docker ps --format={{.Names}}'
+        cmd_run = 'sudo atomic run %s' % self.sub_stuff['img_name']
+        self.get_installed()
+        self.loginfo(utils.run(cmd_ps).stdout)
+        if 'rsyslog' not in utils.run(cmd_ps).stdout:
+            self.loginfo('hahahahahahaha')
+            utils.run(cmd_run, timeout=120)
+
     def format_output(self, output):
         """
         Output of a linux command often includes tabs and spaces,

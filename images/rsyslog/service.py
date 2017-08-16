@@ -21,14 +21,18 @@ Prerequisites
 """
 
 from autotest.client import utils
-from dockertest.subtest import SubSubtest
+from rsyslog import rsyslog_base
 import time
 
 
-class service(SubSubtest):
+class service(rsyslog_base):
 
     def initialize(self):
         super(service, self).initialize()
+        # Make sure images is loaded, installed and run
+        self.load_image(self.config['img_stored_location'])
+        self.get_run()
+
         self.sub_stuff['msg'] = 'Test that rsyslog is doing great'
         self.sub_stuff['last_line'] = ''
 
