@@ -83,7 +83,7 @@ class rsyslog_base(SubSubtest):
     def format_output(self, output):
         """
         Output of a linux command often includes tabs and spaces,
-        this method tries to convert output to python lists
+        this method tries to convert output to a python list
         """
         converted = []
         tmp = []
