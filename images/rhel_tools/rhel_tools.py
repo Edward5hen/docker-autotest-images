@@ -41,7 +41,7 @@ class rhel_tools_base(SubSubtest):
             utils.run(cmd, timeout=300, ignore_status=True)
             self.check_loaded()
         else:
-            self.logdebug('images does not need to load')
+            self.loginfo('image does not need to load')
 
     def check_loaded(self):
         images = DockerImages(self)
@@ -81,6 +81,23 @@ class run_img(rhel_tools_base):
         self.sub_stuff['run_rst'] = None
         self.load_image(self.config['img_stored_location'])
 
+    def check_size(self):
+        """
+        This method is to check image's size.
+        The correct size must be between 90%-110% of 1.4GB.
+        """
+        can_pass = 0
+        min_size = 0.9 * 1.4
+        max_size = 1.1 * 1.4
+        cmd = "sudo docker images --format={{.Repository}}:{{.Tag}}\
+hope-not-exist{{.Size}} | grep %s" % self.sub_stuff['img_name']
+        rst = utils.run(cmd).stdout.split('hope-not-exist')[-1]
+        actual_size = float(rst[:-3])
+        self.loginfo('Image size is %s' % actual_size)
+        if min_size < actual_size < max_size:
+            can_pass = 1
+        self.failif_ne(can_pass, 1, "Size is not Correct")
+
     def run_once(self):
         super(run_img, self).run_once()
         run_cmd = "sudo atomic run %s" % self.sub_stuff['img_name']
@@ -95,3 +112,4 @@ class run_img(rhel_tools_base):
         self.failif(
             not self.sub_stuff['run_rst'].strip().endswith('#'),
             "Container is not automatically attched!")
+        self.check_size()

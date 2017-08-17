@@ -51,7 +51,7 @@ class rsyslog_base(SubSubtest):
             utils.run(cmd, timeout=300, ignore_status=True)
             self.check_loaded()
         else:
-            self.loginfo('images does not need to load')
+            self.loginfo('image does not need to load')
 
     def check_loaded(self):
         images = DockerImages(self)
@@ -147,6 +147,23 @@ class install(rsyslog_base):
         self.failif_ne(self.sub_stuff['sys_cfg_exists'], 0,
                        '/etc/sysconfig/rsyslog does not exist on host!')
 
+    def check_size(self):
+        """
+        This method is to check image's size.
+        The correct size must be between 90%-110% of 208 MB.
+        """
+        can_pass = 0
+        min_size = 0.9 * 208
+        max_size = 1.1 * 208
+        cmd = "sudo docker images --format={{.Repository}}:{{.Tag}}\
+hope-not-exist{{.Size}} | grep %s" % self.sub_stuff['img_name']
+        rst = utils.run(cmd).stdout.split('hope-not-exist')[-1]
+        actual_size = float(rst[:-3])
+        self.loginfo('Image size is %s' % actual_size)
+        if min_size < actual_size < max_size:
+            can_pass = 1
+        self.failif_ne(can_pass, 1, "Size is not Correct")
+
     def postprocess(self):
         super(install, self).postprocess()
         self.failif_ne(self.sub_stuff['install_result'].exit_status, 0,
@@ -154,3 +171,4 @@ class install(rsyslog_base):
         self.check_cfg()
         self.check_sys_cfg()
         self.check_dir()
+        self.check_size()
