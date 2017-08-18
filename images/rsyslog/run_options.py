@@ -111,6 +111,10 @@ class run_options(rsyslog_base):
             dcr_exec_cmd + echo_name_cmd).stdout.strip()
         self.sub_stuff['env_vir_image'] = utils.run(
             dcr_exec_cmd + echo_image_cmd).stdout.strip()
+        self.loginfo('Env virable NAME is %s' %
+                     self.sub_stuff['env_vir_name'])
+        self.loginfo('Env virable IMAGE is %s' %
+                     self.sub_stuff['env_vir_image'])
 
     def check_env_vir(self):
         # If testing by loading the image, NAME viriable is rsyslog-docker
@@ -124,21 +128,27 @@ class run_options(rsyslog_base):
         self.failif_ne(self.sub_stuff['etc_pki_rsyslog_rst_ctn'],
                        self.sub_stuff['etc_pki_rsyslog_rst_host'],
                        '/etc/pki/rsyslog mounted failed!')
+        self.loginfo('/etc/pki/rsyslog mounted successfully')
         self.failif_ne(self.sub_stuff['etc_rsyslog_conf_rst_ctn'],
                        self.sub_stuff['etc_rsyslog_conf_rst_host'],
                        '/etc/rsyslog.conf mounted failed!')
+        self.loginfo('/etc/rsyslog.conf mounted successfully')
         self.failif_ne(self.sub_stuff['etc_rsyslog_d_rst_ctn'],
                        self.sub_stuff['etc_rsyslog_d_rst_host'],
                        '/etc/rsyslog.d mounted failed!')
+        self.loginfo('/etc/rsyslog.d mounted successfully')
         self.failif_ne(self.sub_stuff['var_lib_rsyslog_rst_ctn'],
                        self.sub_stuff['var_lib_rsyslog_rst_host'],
                        '/var/lib/rsyslog mounted failed!')
+        self.loginfo('/var/lib/rsyslog mounted successfully')
         self.failif_ne(self.sub_stuff['var_log_rst_ctn'],
                        self.sub_stuff['var_log_rst_host'],
                        '/var/log mounted failed!')
+        self.loginfo('/var/log mounted successfully')
         self.failif_ne(self.sub_stuff['etc_machine_id_rst_ctn'],
                        self.sub_stuff['etc_machine_id_rst_host'],
                        '/etc/machine-id mounted failed!')
+        self.loginfo('/etc/machine-id mounted successfully')
 
         # Check mounted dir /run
         can_pass = 0
@@ -153,6 +163,12 @@ class run_options(rsyslog_base):
             can_pass = 1
         self.failif_ne(can_pass, 1, '/run mounted failed!')
 
+    def check_cves(self):
+        cmd = 'sudo atomic scan %s | grep -i pass' % self.sub_stuff['img_name']
+        result = utils.run(cmd, timeout=600)
+        self.failif_ne(result.exit_status, 0, 'atomic scan failed!')
+        self.loginfo('No CVEs found by atomic scan')
+
     def run_once(self):
         """
         Called to run test
@@ -164,6 +180,8 @@ class run_options(rsyslog_base):
 
         ctn_name_cmd = "sudo docker ps | grep rsyslog | awk '{print $10}'"
         self.sub_stuff['ctn_name_rst'] = utils.run(ctn_name_cmd, timeout=3)
+        self.loginfo('Container name is %s' %
+                     self.sub_stuff['ctn_name_rst'].stdout.strip())
 
         self.list_mounted_dir()
         self.echo_env_virs()
@@ -180,3 +198,4 @@ class run_options(rsyslog_base):
 
         self.check_mounted_dir()
         self.check_env_vir()
+        self.check_cves()

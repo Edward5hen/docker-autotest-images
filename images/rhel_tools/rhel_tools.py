@@ -39,9 +39,10 @@ class rhel_tools_base(SubSubtest):
         if not self.check_loaded():
             cmd = 'cat %s | sudo docker load' % location
             utils.run(cmd, timeout=300, ignore_status=True)
+            self.loginfo('Image is loaded successfully')
             self.check_loaded()
         else:
-            self.loginfo('image does not need to load')
+            self.loginfo('Image does not need to load')
 
     def check_loaded(self):
         images = DockerImages(self)
@@ -53,6 +54,7 @@ class rhel_tools_base(SubSubtest):
                 if rst is not None:
                     if str(self.config['rls_ver']) == rst.group():
                         self.sub_stuff['img_name'] = image_name
+                        self.loginfo('Image is loaded and match the version.')
                         return True
                 else:
                     raise ValueError('No digital release info found!')
@@ -94,6 +96,7 @@ hope-not-exist{{.Size}} | grep %s" % self.sub_stuff['img_name']
         rst = utils.run(cmd).stdout.split('hope-not-exist')[-1]
         actual_size = float(rst[:-3])
         self.loginfo('Image size is %s' % actual_size)
+        self.loginfo('Greater than %f, lower than %f' % (min_size, max_size))
         if min_size < actual_size < max_size:
             can_pass = 1
         self.failif_ne(can_pass, 1, "Size is not Correct")
@@ -112,4 +115,5 @@ hope-not-exist{{.Size}} | grep %s" % self.sub_stuff['img_name']
         self.failif(
             not self.sub_stuff['run_rst'].strip().endswith('#'),
             "Container is not automatically attched!")
+        self.loginfo('Container is automatically attached')
         self.check_size()

@@ -49,9 +49,10 @@ class rsyslog_base(SubSubtest):
         if not self.check_loaded():
             cmd = 'cat %s | sudo docker load' % location
             utils.run(cmd, timeout=300, ignore_status=True)
+            self.loginfo('Image is loaded successfully')
             self.check_loaded()
         else:
-            self.loginfo('image does not need to load')
+            self.loginfo('Image does not need to load')
 
     def check_loaded(self):
         images = DockerImages(self)
@@ -62,6 +63,7 @@ class rsyslog_base(SubSubtest):
                 rst = re.search(self.regx, release_line.stdout)
                 if rst is not None:
                     if str(self.config['rls_ver']) == rst.group():
+                        self.loginfo('Image is found, and match release num')
                         self.sub_stuff['img_name'] = image_name
                         return True
                 else:
@@ -72,6 +74,7 @@ class rsyslog_base(SubSubtest):
         """ Have to be used after load_image """
         cmd = 'sudo atomic install %s' % self.sub_stuff['img_name']
         utils.run(cmd, timeout=120)
+        self.loginfo('Image is successfully installed')
 
     def get_run(self):
         cmd_ps = 'sudo docker ps --format={{.Names}}'
@@ -79,6 +82,7 @@ class rsyslog_base(SubSubtest):
         self.get_installed()
         if 'rsyslog' not in utils.run(cmd_ps).stdout:
             utils.run(cmd_run, timeout=120)
+            self.loginfo('Image is successfully run')
 
     def format_output(self, output):
         """
@@ -102,6 +106,7 @@ class install(rsyslog_base):
         self.load_image(self.config['img_stored_location'])
         # Uninstall the image first, if there was some older version installed
         try:
+            self.loginfo('Uninstall the image first')
             utils.run('sudo atomic uninstall %s' % self.sub_stuff['img_name'],
                       timeout=30)
         except error.CmdError:
@@ -117,7 +122,7 @@ class install(rsyslog_base):
         super(install, self).run_once()
         ins_result = utils.run(
             'sudo atomic install %s' % self.sub_stuff['img_name'],
-            timeout=60, ignore_status=True)
+            timeout=120, ignore_status=True)
         self.sub_stuff['install_result'] = ins_result
 
         # List /etc/pki/rsyslog dir
@@ -138,14 +143,17 @@ class install(rsyslog_base):
     def check_dir(self):
         self.failif_ne(self.sub_stuff['dir_exists'], 0,
                        '/etc/pki/rsyslog does not exist on host!')
+        self.loginfo('/etc/pki/rsyslog is successfully created')
 
     def check_cfg(self):
         self.failif_ne(self.sub_stuff['cfg_exists'], 0,
                        '/etc/rsyslog.conf does not exist on host!')
+        self.loginfo('/etc/rsyslog.conf is successfully created')
 
     def check_sys_cfg(self):
         self.failif_ne(self.sub_stuff['sys_cfg_exists'], 0,
                        '/etc/sysconfig/rsyslog does not exist on host!')
+        self.loginfo('/etc/sysconfig/rsyslog is successfully created')
 
     def check_size(self):
         """
@@ -160,6 +168,7 @@ hope-not-exist{{.Size}} | grep %s" % self.sub_stuff['img_name']
         rst = utils.run(cmd).stdout.split('hope-not-exist')[-1]
         actual_size = float(rst[:-3])
         self.loginfo('Image size is %s' % actual_size)
+        self.loginfo('Greater than %f, lower than %f' % (min_size, max_size))
         if min_size < actual_size < max_size:
             can_pass = 1
         self.failif_ne(can_pass, 1, "Size is not Correct")
