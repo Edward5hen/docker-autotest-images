@@ -71,8 +71,9 @@ class run_options(sadc_base):
         self.sub_stuff['var_log_sa_rst_host'] = set(self.format_output(
             utils.run(var_log_sa_cmd).stdout))
 
-        host_cmd = 'ls -go /host'
-        root_cmd = 'ls -go /'
+        # The proc line is diffrent
+        host_cmd = 'ls -go /host | grep -v proc'
+        root_cmd = 'ls -go / | grep -v proc'
         self.sub_stuff['host_rst_ctn'] = set(self.format_output(
             utils.run(dcr_exec_cmd + host_cmd).stdout))
         self.sub_stuff['root_rst_host'] = set(self.format_output(
