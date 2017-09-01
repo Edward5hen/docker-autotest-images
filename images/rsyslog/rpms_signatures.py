@@ -2,11 +2,11 @@ r"""
 Summary
 ---------
 
-Test rpms on rhel7/rhel-tools container are signed correctly
+Test rpms on rsyslog container are signed correctly
 
 Operational Detail
 ----------------------
-#. Load image rhel-tools
+#. Load image rsyslog
 #. Run it with atomic command
 #. List all the rpms on container
 #. Check every rpm is signed with gold key
@@ -14,16 +14,15 @@ Operational Detail
 Prerequisites
 ---------------
 
-*   Clean host without sadc container ever installed
 """
 
 from autotest.client import utils
-from rhel_tools import rhel_tools_base
+from rsyslog import rsyslog_base
 
 GOLD_KEY = '199e2f91fd431d51'
 
 
-class rpms_signatures(rhel_tools_base):
+class rpms_signatures(rsyslog_base):
 
     def initialize(self):
         super(rpms_signatures, self).initialize()
@@ -33,11 +32,11 @@ class rpms_signatures(rhel_tools_base):
         super(rpms_signatures, self).run_once()
 
         # Run a container which sleep 2m to execute the test
-        utils.run('sudo docker run -d --name=rt_sig %s sleep 120' %
+        utils.run('sudo docker run -d --name=rsyslog_sig %s sleep 120' %
                   self.sub_stuff['img_name'])
 
-        qa_cmd = 'sudo docker exec rt_sig rpm -qa'
-        query_cmd = 'sudo docker exec rt_sig rpm -qi %s'
+        qa_cmd = 'sudo docker exec rsyslog_sig rpm -qa'
+        query_cmd = 'sudo docker exec rsyslog_sig rpm -qi %s'
         rst_qa = utils.run(qa_cmd).stdout
         rpm_list = rst_qa.split('\n')
         fake_list = []
@@ -58,3 +57,4 @@ class rpms_signatures(rhel_tools_base):
                         else:
                             fake_list.append(rpm)
         self.loginfo('Fake rpm(s) is/are found:' + str(fake_list))
+
