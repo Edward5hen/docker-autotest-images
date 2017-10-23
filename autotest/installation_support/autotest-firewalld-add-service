@@ -1,0 +1,173 @@
+#!/usr/bin/env python
+
+"""
+This tool adds a service to firewalld's permanent configuration
+
+We don't expect this tool be run, and thus firewalld to be present on a system
+that does not have quite recent software, such as Python 2.7
+"""
+
+import argparse
+import logging
+import os
+from subprocess import Popen, PIPE
+# This script won't be executed on py 2.4, but has to be checked through pylint
+# pylint: disable=E0611
+import xml.etree.ElementTree
+
+
+DEFAULT_ZONE_DEFAULT_BASE_PATH = os.path.join(os.sep, "usr", "lib",
+                                              "firewalld", "zones")
+DEFAULT_ZONE_SYSTEM_BASE_PATH = os.path.join(os.sep, "etc",
+                                             "firewalld", "zones")
+
+
+class ArgumentParser(argparse.ArgumentParser):
+
+    def __init__(self):
+        super(ArgumentParser, self).__init__(
+            description=("This tool adds a service to firewalld's permanent "
+                         "configuration"))
+
+        self.add_argument('-z', '--zone', default=self._get_default_zone(),
+                          help=('Zone name, using default path (defaults to '
+                                '"%(default)s")'))
+
+        self.add_argument('-s', '--service', default='http',
+                          help='Service name (defaults to "%(default)s")')
+
+    @staticmethod
+    def _get_default_zone():
+        cmd = ['firewall-cmd', '--get-default-zone']
+        proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+        # don't forget to rstrip the newline
+        output = proc.communicate()[0].rstrip()
+        if proc.returncode != 0:
+            # we could raise an exception here because firewall-cmd may not
+            # be present, instead return None so we can tell the difference
+            # between no default and an empty arg, and at least get a useful
+            # error message
+            return None
+        else:
+            return output
+
+
+class App(object):
+
+    def __init__(self):
+        self.parsed_arguments = None
+
+    @staticmethod
+    def try_open(path, mode="r"):
+        """
+        :param path: path to attempt to open with mode
+        :type path: str
+        :param mode: mode to open the file, defaults to r
+        :type mode: str
+        :return: The path if it is openable with mode, else the empty path ''
+        :rtype: str
+        """
+        try:
+            open(path, mode).close()
+            return path
+        except IOError:
+            return ''
+
+    def get_src_file_from_zone(self, zone):
+        """
+        Attempt to open the firewalld zone file.  Will attempt to open the
+        system config in /etc/firewalld/, if that fails it will attempt to
+        open the default/fallback config in /usr/lib/firewalld/.
+
+        Return the path the successfully opens, or the empty path if they all
+        fail.
+
+        :param zone: firewalld zone name
+        :type zone: str
+        :return: pathname of zone file, e.g. /etc/firewalld/zones/public.xml
+        :rtype: str
+        """
+        zone_filename = "%s.xml" % zone
+        path = os.path.join(DEFAULT_ZONE_SYSTEM_BASE_PATH,
+                            zone_filename)
+        if self.try_open(path):
+            return path
+        else:
+            path = os.path.join(DEFAULT_ZONE_DEFAULT_BASE_PATH,
+                                zone_filename)
+            return self.try_open(path)
+
+    @staticmethod
+    def get_dst_file_from_zone(zone):
+        zone_filename = "%s.xml" % zone
+        return os.path.join(DEFAULT_ZONE_SYSTEM_BASE_PATH,
+                            zone_filename)
+
+    @staticmethod
+    def is_service_enabled(path, service):
+        if not os.path.exists(path):
+            return False
+
+        tree = xml.etree.ElementTree.parse(path)
+        root = tree.getroot()
+
+        for child in root:
+            if child.tag == 'service':
+                if child.attrib['name'] == service:
+                    return True
+
+        return False
+
+    def add_service(self, zone, service):
+        src_file_path = self.get_src_file_from_zone(zone)
+        if not os.path.exists(src_file_path):
+            logging.error('Could not find default zone file: %s',
+                          src_file_path)
+            return False
+
+        src_tree = xml.etree.ElementTree.parse(src_file_path)
+        src_root = src_tree.getroot()
+        dst_file_path = self.get_dst_file_from_zone(zone)
+
+        if self.is_service_enabled(dst_file_path, service):
+            return True
+
+        attrib = {'name': service}
+        xml.etree.ElementTree.SubElement(src_root, 'service', attrib)
+        src_tree.write(dst_file_path)
+
+        # Now, double check the write was successful
+        return self.is_service_enabled(dst_file_path, service)
+
+    def run(self):
+        argument_parser = ArgumentParser()
+        self.parsed_arguments = argument_parser.parse_args()
+
+        if self.parsed_arguments.zone is None:
+            logging.error("Unable to determine default zone,"
+                          "please specify zone or check firewall-cmd "
+                          "--get-default-zone")
+            argument_parser.print_help()
+            raise SystemExit(1)
+
+        if not self.parsed_arguments.zone:
+            logging.error("A zone name is a required argument")
+            argument_parser.print_help()
+            raise SystemExit(1)
+
+        if not self.parsed_arguments.service:
+            logging.error("A service name is a required argument")
+            argument_parser.print_help()
+            raise SystemExit(1)
+
+        result = self.add_service(self.parsed_arguments.zone,
+                                  self.parsed_arguments.service)
+        if result:
+            raise SystemExit(0)
+        else:
+            raise SystemExit(-1)
+
+
+if __name__ == '__main__':
+    app = App()
+    app.run()

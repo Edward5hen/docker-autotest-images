@@ -1,0 +1,33 @@
+language: python
+python:
+    - "2.7"
+    - "2.6"
+
+branches:
+    only:
+        - master
+
+git:
+    submodules: false
+
+before_script:
+    - sudo apt-get update
+    - sudo apt-get install -y --force-yes protobuf-compiler python-protobuf
+    - make -C tko
+
+install:
+    - pip install sphinx tox simplejson MySQL-python
+    - pip install -r requirements.txt
+
+script:
+    - inspekt indent
+    - ./utils/unittest_suite_nose.py -c .nose.cfg
+    - inspekt lint
+    - rm -f tko/tko_pb2.py
+    - inspekt style
+
+notifications:
+  irc:
+    channels: "irc.oftc.net#autotest"
+    template:
+      - "%{repository}@%{branch}: %{message} (%{build_url})"

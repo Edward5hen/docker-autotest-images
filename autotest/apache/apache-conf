@@ -1,0 +1,16 @@
+<IfVersion >= 2.4>
+   <Location />
+      Require all granted
+   </Location>
+</IfVersion>
+<IfVersion < 2.2.99>
+   <Location />
+      Order allow,deny
+      allow from all
+   </Location>
+</IfVersion>
+
+# Include files relevant to the server code
+Include "autotest.d/django-directives"
+Include "autotest.d/cgi-directives"
+Include "autotest.d/tko-directives"

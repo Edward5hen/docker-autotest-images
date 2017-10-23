@@ -1,0 +1,10 @@
+RewriteEngine On
+
+# This rule is meant for autotest installations under a single directory,
+# such as when pulling the code from git or from a tarball
+RewriteCond /usr/local/autotest/apache/www/favicon.ico -f
+RewriteRule /favicon.ico /usr/local/autotest/apache/www/favicon.ico
+
+# This rule is meant for autotest installations from a package such as RPM
+RewriteCond /usr/share/autotest/www/favicon.ico -f
+RewriteRule /favicon.ico /usr/share/autotest/www/favicon.ico

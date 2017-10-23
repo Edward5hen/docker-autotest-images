@@ -1,0 +1,199 @@
+#!/usr/bin/env python
+
+
+"""
+This script attemps to make it trivial to create the Autotest server database
+and populate with the needed schema, all in one simple command
+"""
+
+import logging
+import optparse
+import os
+
+import django.core.management
+
+try:
+    import autotest.common as common  # pylint: disable=W0611
+except ImportError:
+    import common  # pylint: disable=W0611
+
+from autotest.frontend import setup_django_environment  # pylint: disable=W0611
+from autotest.installation_support import database_manager
+from autotest.installation_support import global_config_set_value
+from autotest.client.shared import settings
+
+
+def set_settings_value(section, key, value):
+    '''
+    Sets a value on the configuration file
+
+    It does so by reading all lines an rewriting the one needed. This is
+    far from efficient and should only be used to perform changes to a
+    handful of configuration values
+    '''
+    path = settings.settings.config_file
+
+    global_config_set_value.set_value(path, section, key, value)
+
+    reload(settings)
+    assert settings.settings.get_value(section, key) == value
+
+
+class OptionParser(optparse.OptionParser):
+
+    def __init__(self):
+        optparse.OptionParser.__init__(self, usage='Usage: %prog [options]')
+
+        self.add_option('-H', '--host', default='localhost',
+                        help=('Host name or IP address of the database server '
+                              '(defaults to "%default")'))
+
+        self.add_option('-u', '--username', default='autotest',
+                        help=('Name of user that will have read and write '
+                              'access to the database (defaults to '
+                              '"%default")'))
+
+        self.add_option('-p', '--password', default='please_set_this_password',
+                        help=('Password that will be assigned to the user '
+                              'with read and write access to the database '
+                              '(defaults to "%default")'))
+
+        self.add_option('-d', '--database', default='autotest_web',
+                        help=('Name of the database that will be created '
+                              '(defaults to "%default")'))
+
+        self.add_option('--from-config', action='store_true', default=False,
+                        help=('Use the configuration as it is in the '
+                              'configuration file. When this option is used '
+                              'it disregards options such as --host, --username'
+                              ', etc. Also it won\'t modify the configuration '
+                              'file.'))
+
+        self.add_option('--root-username', default='root',
+                        help=('Name of database administrator '
+                              '(defaults to "%default")'))
+
+        self.add_option('--root-password', default='',
+                        help=('The password currently assigned to the '
+                              'database administrator user (defaults '
+                              'to an empty string)'))
+
+        actions_grp = self.add_option_group('ACTIONS')
+        actions_grp.add_option('-s', '--setup', action='store_true',
+                               help=('Perform the complete database setup in '
+                                     'a single action'))
+
+        actions_grp.add_option('--check-credentials', action='store_true',
+                               help=('Check if the database admin password '
+                                     'is valid'))
+
+
+class App(object):
+
+    def __init__(self):
+        self.option_parser = OptionParser()
+
+    def update_config_file(self, opts):
+        '''
+        Update the global config file with values given in the command line
+        '''
+        try:
+            section = 'AUTOTEST_WEB'
+            set_settings_value(section, 'host', opts.host)
+            set_settings_value(section, 'database', opts.database)
+            set_settings_value(section, 'user', opts.username)
+            set_settings_value(section, 'password', opts.password)
+        except AssertionError:
+            return False
+
+        return True
+
+    def run(self):
+        result = False
+        opts, args = self.option_parser.parse_args()
+
+        def get_config_db_value(key):
+            return settings.settings.get_value('AUTOTEST_WEB', key)
+
+        if opts.from_config:
+            conn_options = {'database': get_config_db_value('database'),
+                            'host': get_config_db_value('host'),
+                            'db_type': get_config_db_value('db_type'),
+                            'user': get_config_db_value('user'),
+                            'password': get_config_db_value('password'),
+                            'root_user': opts.root_username,
+                            'root_password': opts.root_password}
+        else:
+            conn_options = {'database': opts.database,
+                            'host': opts.host,
+                            'db_type': get_config_db_value('db_type'),
+                            'user': opts.username,
+                            'password': opts.password,
+                            'root_user': opts.root_username,
+                            'root_password': opts.root_password}
+
+        klass = database_manager.get_manager_class(conn_options['db_type'])
+        mngr = klass(conn_options['database'],
+                     admin=conn_options['root_user'],
+                     admin_password=conn_options['root_password'],
+                     user=conn_options['user'],
+                     password=conn_options['password'],
+                     host=conn_options['host'])
+
+        if opts.check_credentials:
+            if mngr.admin_credentials_valid():
+                return 0
+            else:
+                return -1
+
+        elif opts.setup:
+            if not opts.from_config:
+                # Write the configuration values to the global config file
+                config = self.update_config_file(opts)
+                if not config:
+                    logging.error("Failure while setting the config file "
+                                  "database values. Please check the current "
+                                  "state of your autotest config file.")
+                    return -1
+
+            # Perform the creation of the database
+            creation = mngr.setup()
+            if not creation:
+                logging.error("Failure while creating the database "
+                              "and setting privileges")
+                return -1
+
+            # Finally run Django's syncdb, yes, twice
+            # The current method is suboptimal, we may need to fetch the syncdb command module
+            argv = ['manage.py', 'syncdb', '-v0', '--noinput']
+            django.core.management.execute_from_command_line(argv)
+            argv = ['manage.py', 'migrate', '-v0', '--noinput']
+            django.core.management.execute_from_command_line(argv)
+
+            # South does not run the initial SQL file. This could be added as an
+            # extension to Django's management commands, but for now, let's KISS
+            this_path = os.path.dirname(os.path.abspath(__file__))
+            base_path = os.path.dirname(this_path)
+            tko_view_sql_path = os.path.join(base_path, 'frontend', 'tko',
+                                             'sql', 'tko-test-view.sql')
+            tko_view_2_sql_path = os.path.join(base_path, 'frontend', 'tko',
+                                               'sql', 'tko-test-view-2.sql')
+            if os.path.exists(tko_view_sql_path):
+                sql = open(tko_view_sql_path).read()
+                if not (mngr.run_sql(sql)):
+                    return -1
+            if os.path.exists(tko_view_2_sql_path):
+                sql = open(tko_view_2_sql_path).read()
+                if not (mngr.run_sql(sql)):
+                    return -1
+            return 0
+
+        else:
+            self.option_parser.print_help()
+            return 0
+
+
+if __name__ == '__main__':
+    app = App()
+    result = app.run()
+    raise SystemExit(result)

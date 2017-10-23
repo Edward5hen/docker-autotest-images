@@ -1,0 +1,26 @@
+RewriteEngine On
+
+# This rule is meant for autotest installations under a single directory,
+# such as when pulling the code from git or from a tarball
+RewriteCond /usr/local/autotest/results -d
+RewriteRule /results(.*) /usr/local/autotest/results/$1
+
+# This rule is meant for autotest installations from a package such as RPM
+RewriteCond /var/lib/autotest/results -d
+RewriteRule /results(.*) /var/lib/autotest/results/$1
+
+<Location "/results">
+    IndexHeadInsert "<img src='/afe/header.png'/><hr/>"
+    Options +Indexes +FollowSymLinks +MultiViews
+    <IfVersion >= 2.4>
+        Require all granted
+    </IfVersion>
+    <IfVersion <= 2.2.99>
+        Order allow,deny
+        Allow from all
+    </IfVersion>
+</Location>
+
+<LocationMatch "/results.*\.(log|DEBUG|INFO|WARNING|ERROR)$">
+    ForceType "text/plain; authoritative=true"
+</LocationMatch>

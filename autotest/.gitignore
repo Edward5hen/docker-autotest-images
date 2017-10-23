@@ -1,0 +1,34 @@
+# default svn:ignore property:
+*.o
+*.lo
+*.la
+#*#
+.*.rej
+*.rej
+.*~
+*~
+.#*
+.DS_Store.
+# additional patterns:
+RELEASE-VERSION
+*.pyc
+*.pid
+client/control
+client/results/
+client/tmp
+.tox*
+logs/*
+server/tmp
+tko/parsers/test/site_scenarios
+ExternalSource
+results/*
+site-packages/
+frontend/client/gwt-unitCache/
+frontend/client/www/
+tko/tko_pb2.py
+documentation/build/*
+build/*
+coverage.xml
+unit.xml
+nosetests.xml
+.cover*

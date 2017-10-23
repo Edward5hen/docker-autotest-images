@@ -1,0 +1,69 @@
+#
+# The following prevents a system from having installed and loaded on apache
+# both mod_python and mod_wsgi
+#
+<IfModule mod_wsgi.c>
+   <IfModule mod_python.c>
+      ERROR__EITHER_MOD_WSGI_XOR_MOD_PYTHON_SHOULD_BE_ACTIVE
+   </IfModule>
+</IfModule>
+
+#
+# Django, when running under mod_python, requires the prefork MPM, so just
+# fail with this bogus directive if it's not loaded. For more info see:
+# https://github.com/autotest/autotest/wiki/AutotestServerInstall
+#
+<IfModule !prefork.c>
+    <IfModule mod_python.c>
+       ERROR__DJANGO_REQUIRES_THE_PREFORK_MPM
+    </IfModule>
+</IfModule>
+
+RewriteEngine On
+
+#
+# Configuration for mod_wsgi
+#
+<IfModule mod_wsgi.c>
+
+    RewriteCond /usr/local/autotest/frontend/frontend.wsgi -f
+    RewriteRule /(retrieve_logs|media/|(afe|new_tko)/server)(.*) /usr/local/autotest/frontend/frontend.wsgi [H=wsgi-script]
+
+    RewriteCond /usr/lib/python2.7/site-packages/autotest/frontend/frontend.wsgi -f
+    RewriteRule /(retrieve_logs|media/|(afe|new_tko)/server)(.*) /usr/lib/python2.7/site-packages/autotest/frontend/frontend.wsgi [H=wsgi-script]
+
+    RewriteCond /usr/lib/python2.6/site-packages/autotest/frontend/frontend.wsgi -f
+    RewriteRule /(retrieve_logs|media/|(afe|new_tko)/server)(.*) /usr/lib/python2.6/site-packages/autotest/frontend/frontend.wsgi [H=wsgi-script]
+
+    RewriteCond /usr/lib/python2.5/site-packages/autotest/frontend/frontend.wsgi -f
+    RewriteRule /(retrieve_logs|media/|(afe|new_tko)/server)(.*) /usr/lib/python2.5/site-packages/autotest/frontend/frontend.wsgi [H=wsgi-script]
+
+    RewriteCond /usr/lib/python2.4/site-packages/autotest/frontend/frontend.wsgi -f
+    RewriteRule /(retrieve_logs|media/|(afe|new_tko)/server)(.*) /usr/lib/python2.4/site-packages/autotest/frontend/frontend.wsgi [H=wsgi-script]
+
+    <LocationMatch "/(retrieve_logs|media/|(afe|new_tko)/server)(.*)">
+       Options +ExecCGI
+    </LocationMatch>
+
+    WSGISocketPrefix run/wsgi
+    WSGIDaemonProcess autotestapache processes=10 threads=1
+    WSGIProcessGroup autotestapache
+    WSGIPassAuthorization On
+</IfModule>
+
+#
+# Configuration for mod_python
+#
+<IfModule mod_python.c>
+    <Location ~ "/(retrieve_logs)|((afe|new_tko)/server)">
+        SetHandler python-program
+        PythonHandler django.core.handlers.modpython
+        SetEnv DJANGO_SETTINGS_MODULE frontend.settings
+        PythonDebug On
+        # Force our own site-packages to be loaded by mod_python prior to
+	# mod_python's system python site-packages directory.
+        # This way our code can depend on library versions other than
+        # those available as packages on various OS distributions.
+        PythonPath "['/usr/local/autotest/site-packages', '/usr/local/autotest', '/usr/lib/python2.7/site-packages/autotest', '/usr/lib/python2.6/site-packages/autotest', '/usr/lib/python2.5/site-packages/autotest', '/usr/lib/python2.4/site-packages/autotest'] + sys.path"
+    </Location>
+</IfModule>
