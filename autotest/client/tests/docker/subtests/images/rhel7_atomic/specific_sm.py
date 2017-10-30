@@ -56,7 +56,7 @@ class specific_sm(rhel7_atomic_base):
 
     def run_detached_img(self):
         cmd = ('sudo docker run -d --name=rhel7-atomic '
-               '%s /bin/sleep 1000' % self.sub_stuff['image_name'])
+               '%s /bin/sleep 1000' % self.sub_stuff['img_name'])
         self.loginfo('running a detached conainer just sleeps 1000s....')
         utils.run(cmd, timeout=10)
 
@@ -78,69 +78,76 @@ class specific_sm(rhel7_atomic_base):
         username = self.config['sm_user']
         password = self.config['sm_pwd']
         cmd = ('sudo subscription-manager register '
-               '--username %s --password %s'
-               ' --auto-attach' % (username, password))
+               '--username %s --password '
+               '--serverurl=subscription.rhn.stage.redhat.com '
+               '--baseurl=cdn.stage.redhat.com '
+               '--auto-attach' % (username, password))
         self.loginfo('subscribing.....')
         utils.run(cmd, timeout=50)
 
     def run_once(self):
         super(specific_sm, self).run_once()
-        self.loginfo('Step 1.....')
+        self.loginfo(
+            ('1. sudo docker exec rhel7-atomic microdnf install '
+             '--enablerepo=rhel-7-server-rpms traceroute')
+            )
         cmd_install = ('sudo docker exec rhel7-atomic microdnf install'
                        ' --enablerepo=rhel-7-server-rpms traceroute')
         self.sub_stuff['install_b4'] = utils.run(
             cmd_install, timeout=30, ignore_status=True
             )
 
-        self.loginfo('Step 2.....')
+        self.loginfo('2. sudo docker exec rhel7-atomic test -s /etc/yum.repo/redhat.repo')
         cmd_test = ('sudo docker exec rhel7-atomic test -s '
                     '/etc/yum.repos.d/redhat.repo')
         self.sub_stuff['test_repo_b4'] = utils.run(
             cmd_test, timeout=10, ignore_status=True
             )
 
-        self.loginfo('Step 3.....')
+        self.loginfo('3. subscribe on host with correct confidentiality')
         self.subscribe()
 
-        self.loginfo('Step 4.....')
+        self.loginfo('4. stop and rm rhel7-atomic, then create rhel7-atomic')
         self.stop_rm_ctn()
         self.run_detached_img()
 
-        self.loginfo('Step 5.....')
+        self.loginfo(
+            ('5. sudo docker exec rhel7-atomic microdnf install '
+             '--enablerepo=rhel-7-server-rpms traceroute')
+            )
         self.sub_stuff['install_after'] = utils.run(
-            cmd_install, timeout=50
+            cmd_install, timeout=900
             )
 
-        self.loginfo('Step 6.....')
+        self.loginfo('6. sudo docker exec rhel7-atomic test -s /etc/yum.repo/redhat.repo')
         self.sub_stuff['test_repo_after'] = utils.run(
             cmd_test, timeout=10
             )
 
     def postprocess(self):
         super(specific_sm, self).postprocess()
-        self.loginfo('check point 1...')
+        self.loginfo('1. some error is raised up that tells that repo is not found')
         self.failif(self.sub_stuff['install_b4'].exit_status == 0,
                     'microdnf install does NOT fail before host registers')
         self.loginfo('microdnf install FAILs before host registers')
 
-        self.loginfo('check point 2...')
+        self.loginfo('2. size of redhat.repo file is zero')
         self.failif(self.sub_stuff['test_repo_b4'].exit_status == 0,
                     'repo file is NOT empty')
         self.loginfo('repo file is empty')
 
-        self.loginfo('check point 4...')
+        self.loginfo('4. container is stopped and removed successfully')
         self.failif_ne(self.sub_stuff['stop_rst'].exit_status, 0,
                        'cant stop container rhel7-atomic')
         self.failif_ne(self.sub_stuff['rm_rst'].exit_status, 0,
                        'cant remove container rhel7-atomic')
-        self.loginfo('container is stopped and removed successfully')
 
-        self.loginfo('check point 5...')
+        self.loginfo('5. traceroute is successfully installed')
         self.failif_ne(self.sub_stuff['install_after'].exit_status, 0,
                        'microdnf install FAILS after host registers')
         self.loginfo('microdnf install PASSes after host registers')
 
-        self.loginfo('check point 6...')
+        self.loginfo('6. redhat.repo file is non-zero')
         self.failif_ne(self.sub_stuff['test_repo_after'].exit_status, 0,
                        'repo file is empty')
         self.loginfo('repo file is not empty now')
