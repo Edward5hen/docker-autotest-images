@@ -73,6 +73,7 @@ class rhel7_atomic_base(SubSubtest):
             # Sometimes returned list need to change to set
             tmp = tuple(tmp)
             converted.append(tmp)
+        return converted
 
     def stop_rm_ctn(self):
         self.loginfo('sudo docker stop rehl7-atomic....')
@@ -83,6 +84,37 @@ class rhel7_atomic_base(SubSubtest):
         self.sub_stuff['rm_rst'] = utils.run(
             'sudo docker rm rhel7-atomic', timeout=10
             )
+
+    def run_detached_img(self):
+        cmd = ('sudo docker run -d --name=rhel7-atomic '
+               '%s /bin/sleep 1000' % self.sub_stuff['img_name'])
+        self.loginfo('running a detached conainer just sleeps 1000s....')
+        utils.run(cmd, timeout=10)
+
+    def check_registration(self):
+        is_registered = False
+        cmd = 'sudo subscription-manager list | grep -i subscribed'
+        cmd_rst = utils.run(cmd, timeout=10, ignore_status=True)
+        if not cmd_rst.exit_status:
+            is_registered = True
+        self.loginfo('is_registered: %s' % is_registered)
+        return is_registered
+
+    def unregister(self):
+        cmd = 'sudo subscription-manager unregister'
+        self.loginfo('unregistering.....')
+        utils.run(cmd, timeout=30)
+
+    def subscribe(self):
+        username = self.config['sm_user']
+        password = self.config['sm_pwd']
+        cmd = ('sudo subscription-manager register '
+               '--username %s --password '
+               '--serverurl=subscription.rhn.stage.redhat.com '
+               '--baseurl=cdn.stage.redhat.com '
+               '--auto-attach' % (username, password))
+        self.loginfo('subscribing.....')
+        utils.run(cmd, timeout=50)
 
     def cleanup(self):
         super(rhel7_atomic_base, self).cleanup()

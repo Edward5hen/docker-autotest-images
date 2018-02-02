@@ -54,37 +54,6 @@ class specific_sm(rhel7_atomic_base):
             self.unregister()
         self.run_detached_img()
 
-    def run_detached_img(self):
-        cmd = ('sudo docker run -d --name=rhel7-atomic '
-               '%s /bin/sleep 1000' % self.sub_stuff['img_name'])
-        self.loginfo('running a detached conainer just sleeps 1000s....')
-        utils.run(cmd, timeout=10)
-
-    def check_registration(self):
-        is_registered = False
-        cmd = 'sudo subscription-manager list | grep -i subscribed'
-        cmd_rst = utils.run(cmd, timeout=10, ignore_status=True)
-        if not cmd_rst.exit_status:
-            is_registered = True
-        self.loginfo('is_registered: %s' % is_registered)
-        return is_registered
-
-    def unregister(self):
-        cmd = 'sudo subscription-manager unregister'
-        self.loginfo('unregistering.....')
-        utils.run(cmd, timeout=30)
-
-    def subscribe(self):
-        username = self.config['sm_user']
-        password = self.config['sm_pwd']
-        cmd = ('sudo subscription-manager register '
-               '--username %s --password '
-               '--serverurl=subscription.rhn.stage.redhat.com '
-               '--baseurl=cdn.stage.redhat.com '
-               '--auto-attach' % (username, password))
-        self.loginfo('subscribing.....')
-        utils.run(cmd, timeout=50)
-
     def run_once(self):
         super(specific_sm, self).run_once()
         self.loginfo(
