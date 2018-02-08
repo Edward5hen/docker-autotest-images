@@ -14,6 +14,7 @@ Prerequisites
 *   Clean host without rhel7-atomic container ever installed
 """
 import re
+import fileinput
 
 from autotest.client import utils
 from dockertest.subtest import SubSubtest
@@ -75,15 +76,19 @@ class rhel7_atomic_base(SubSubtest):
             converted.append(tmp)
         return converted
 
-    def stop_rm_ctn(self):
-        self.loginfo('sudo docker stop rehl7-atomic....')
+    def stop_rm_ctn(self, ctn='rhel7-atomic'):
+        self.loginfo('sudo docker stop {}....'.format(ctn))
         self.sub_stuff['stop_rst'] = utils.run(
-            'sudo docker stop rhel7-atomic', timeout=50
+            'sudo docker stop {}'.format(ctn), timeout=50
             )
-        self.loginfo('sudo docker rm rhel7-atomic.....')
+        self.loginfo('sudo docker rm {}.....'.format(ctn))
         self.sub_stuff['rm_rst'] = utils.run(
-            'sudo docker rm rhel7-atomic', timeout=10
+            'sudo docker rm {}'.format(ctn), timeout=10
             )
+
+    def rm_image(self, full_name):
+        self.loginfo('sudo docker rmi {}....'.format(full_name))
+        utils.run('sudo docker rmi {}'.format(full_name), timeout=60)
 
     def run_detached_img(self):
         cmd = ('sudo docker run -d --name=rhel7-atomic '
@@ -94,6 +99,7 @@ class rhel7_atomic_base(SubSubtest):
     def check_registration(self):
         is_registered = False
         cmd = 'sudo subscription-manager list | grep -i subscribed'
+        self.loginfo('Check registration by {}'.format(cmd))
         cmd_rst = utils.run(cmd, timeout=10, ignore_status=True)
         if not cmd_rst.exit_status:
             is_registered = True
@@ -109,12 +115,19 @@ class rhel7_atomic_base(SubSubtest):
         username = self.config['sm_user']
         password = self.config['sm_pwd']
         cmd = ('sudo subscription-manager register '
-               '--username %s --password '
+               '--username %s --password %s '
                '--serverurl=subscription.rhn.stage.redhat.com '
                '--baseurl=cdn.stage.redhat.com '
                '--auto-attach' % (username, password))
         self.loginfo('subscribing.....')
         utils.run(cmd, timeout=50)
+
+    def replace_line(self, file_dir, full_name):
+        for line in fileinput.input(file_dir, inplace=True):
+            if line.startswith('FROM '):
+                print 'FROM ' + full_name
+            else:
+                print line
 
     def cleanup(self):
         super(rhel7_atomic_base, self).cleanup()

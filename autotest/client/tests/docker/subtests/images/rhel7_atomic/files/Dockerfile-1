@@ -1,0 +1,12 @@
+# docker build --rm --no-cache --force-rm -f Dockerfile-1 -t microdnf-test1 .
+# docker run --rm -it microdnf-test1
+# docker rmi microdnf-test1
+
+FROM test
+MAINTAINER Martin Jenner "mjenner@redhat.com"
+
+RUN microdnf install --enablerepo=rhel-7-server-rpms traceroute && microdnf clean all
+
+CMD ["/bin/traceroute","google.com"]
+
+
