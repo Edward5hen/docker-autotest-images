@@ -1,0 +1,10 @@
+# docker build --rm --no-cache --force-rm -f Dockerfile-2 -t microdnf-test2 .
+# docker run --rm -it microdnf-test2
+# docker rmi microdnf-test2
+
+FROM registry.access.redhat.com/rhel7-atomic
+MAINTAINER Martin Jenner "mjenner@redhat.com"
+
+RUN microdnf update --enablerepo=rhel-7-server-rpms traceroute && microdnf clean all
+
+CMD ["/bin/traceroute","google.com"]
