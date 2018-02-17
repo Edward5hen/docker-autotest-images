@@ -1,0 +1,11 @@
+
+# docker build --rm --no-cache --force-rm -f Dockerfile-3 -t microdnf-test3 .
+# docker run --rm -it microdnf-test3
+# docker rmi microdnf-test3
+
+FROM compose/rcm-compose-release-01.host.prod.eng.bos.redhat.com/rhel7-atomic-docker:guest-rhel-7.3-docker-70868-20170608213934
+MAINTAINER Martin Jenner "mjenner@redhat.com"
+
+RUN microdnf install --enablerepo=rhel-7-server-rpms --enablerepo=rhel-7-server-extras-rpms traceroute etcd && microdnf clean all
+
+CMD ["/bin/traceroute","google.com"]

@@ -1,0 +1,16 @@
+# docker build --rm --no-cache --force-rm -f Dockerfile-5 -t microdnf-test5 .
+# docker run --rm -it microdnf-test5 rpm -q ntop traceroute
+# docker rmi microdnf-test5
+
+FROM compose/rcm-compose-release-01.host.prod.eng.bos.redhat.com/rhel7-atomic-docker:guest-rhel-7.3-docker-70868-20170608213934
+MAINTAINER Martin Jenner "mjenner@redhat.com"
+
+RUN rpm -i http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-9.noarch.rpm
+
+# For first build use the following line to confirm both rpms install
+#RUN microdnf install --enablerepo=epel --enablerepo=rhel-7-server-rpms traceroute htop && microdnf clean all
+
+# - For second build use the following line image build should fail as
+#   htop is not accessable because epel is disabled
+RUN microdnf install --disablerepo=epel --enablerepo=rhel-7-server-rpms traceroute htop && microdnf clean all
+
