@@ -1,0 +1,5 @@
+[private-repo-rpms]
+baseurl = http://download-node-02.eng.bos.redhat.com/rel-eng/RHEL-7.4-RC-1.2/compose/Server/x86_64/os
+name = Private test repo
+enabled = 1
+gpgcheck = 0

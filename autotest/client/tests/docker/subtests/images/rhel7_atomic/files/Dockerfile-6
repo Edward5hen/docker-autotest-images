@@ -1,0 +1,11 @@
+# docker build --rm --no-cache --force-rm -f Dockerfile-6 -t microdnf-test6 .
+# docker run --rm -it microdnf-test6
+# docker rmi microdnf-test6
+
+FROM compose/rcm-compose-release-01.host.prod.eng.bos.redhat.com/rhel7-atomic-docker:guest-rhel-7.3-docker-70868-20170608213934
+MAINTAINER Martin Jenner "mjenner@redhat.com"
+
+ADD private.repo /etc/yum.repos.d/private.repo
+RUN microdnf install --enablerepo=private-repo-rpms traceroute && microdnf clean all
+
+CMD ["/bin/traceroute","google.com"]
