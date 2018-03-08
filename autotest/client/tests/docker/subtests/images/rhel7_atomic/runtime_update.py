@@ -35,7 +35,7 @@ class runtime_update(rhel7_atomic_base):
     def initialize(self):
         super(runtime_update, self).initialize()
 
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
         if not self.check_registration:
             self.subscribe()
         self.run_detached_img()
