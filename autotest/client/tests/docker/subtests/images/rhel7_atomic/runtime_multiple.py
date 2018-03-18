@@ -47,7 +47,7 @@ class runtime_multiple(rhel7_atomic_base):
         super(runtime_multiple, self).initialize()
 
         self.load_image()
-        if not self.check_registration:
+        if not self.check_registration():
             self.subscribe()
         self.run_detached_img()
 

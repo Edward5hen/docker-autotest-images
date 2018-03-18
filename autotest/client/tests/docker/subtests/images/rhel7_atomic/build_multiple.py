@@ -45,7 +45,7 @@ class build_multiple(rhel7_atomic_base):
         super(build_multiple, self).initialize()
 
         self.load_image()
-        if not self.check_registration:
+        if not self.check_registration():
             self.subscribe()
         # Replace FROM line in dockerfile
         self.replace_line(WORK_DIR, self.sub_stuff['img_name'])

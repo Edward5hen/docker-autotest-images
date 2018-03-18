@@ -125,7 +125,7 @@ class rhel7_atomic_base(SubSubtest):
                '--baseurl=cdn.stage.redhat.com '
                '--auto-attach' % (username, password))
         self.loginfo('subscribing.....')
-        utils.run(cmd, timeout=50)
+        utils.run(cmd, timeout=120)
 
     def replace_line(self, file_dir, full_name):
         for line in fileinput.input(file_dir, inplace=True):

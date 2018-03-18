@@ -15,11 +15,13 @@ Setup:
 Steps:
 1. sudo docker exec rhel7-atomic microdnf install
     --enablerepo=rhel-7-server-rpms traceroute
-2. sudo docker exec rhel7-atomic microdnf remove
+2. sudo docker exec rhel7-atomic traceroute google.com
+3. sudo docker exec rhel7-atomic microdnf remove
     --enablerepo=rhel-7-server-rpms traceroute
 Expectations:
 1. traceroute is successfully installed
-2. traceroute is successfully removed
+2. google's traceroute can be successfully printed
+3. traceroute is successfully removed
 Teardown:
 sudo docker stop rhel7-atomic
 sudo docker rm rhel7-atomic
@@ -40,11 +42,12 @@ class runtime_remove(rhel7_atomic_base):
         super(runtime_remove, self).initialize()
 
         self.load_image()
-        if not self.check_registration:
+        if not self.check_registration():
             self.subscribe()
         self.run_detached_img()
 
         self.sub_stuff['install'] = 0
+        self.sub_stuff['run'] = 0
         self.sub_stuff['remove'] = 0
 
     def run_once(self):
@@ -52,6 +55,7 @@ class runtime_remove(rhel7_atomic_base):
 
         cmd_install = ('sudo docker exec rhel7-atomic microdnf install '
                        '--enablerepo=rhel-7-server-rpms traceroute')
+        cmd_run = 'sudo docker exec rhel7-atomic traceroute google.com'
         cmd_remove = ('sudo docker exec rhel7-atomic microdnf remove '
                       '--enablerepo=rhel-7-server-rpms traceroute')
 
@@ -59,7 +63,11 @@ class runtime_remove(rhel7_atomic_base):
         self.sub_stuff['install'] = utils.run(
             cmd_install, timeout=TIME_OUT_LONG).exit_status
 
-        self.loginfo('2. {}'.format(cmd_remove))
+        self.loginfo('2. {}'.format(cmd_run))
+        self.sub_stuff['run'] = utils.run(cmd_run, timeout=TIME_OUT_LONG)
+        self.loginfo(self.sub_stuff['run'].stdout)
+
+        self.loginfo('3. {}'.format(cmd_remove))
         self.sub_stuff['remove'] = utils.run(
             cmd_remove, timeout=TIME_OUT_LONG).exit_status
 
@@ -69,7 +77,12 @@ class runtime_remove(rhel7_atomic_base):
         self.loginfo('1. tracetoute is successfully installed')
         self.failif_ne(self.sub_stuff['install'], 0,
                        'Install failed!!!')
-        self.loginfo('1. tracetoute is successfully removed')
+
+        self.loginfo('2. googles traceroute can be successfully printed')
+        self.failif_ne(self.sub_stuff['run'].exit_status, 0,
+                       'googles traceroute can not be printed!!!')
+
+        self.loginfo('3. tracetoute is successfully removed')
         self.failif_ne(self.sub_stuff['remove'], 0,
                        'Remove failed!!!')
 

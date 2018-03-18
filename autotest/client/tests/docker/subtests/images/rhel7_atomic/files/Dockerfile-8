@@ -1,0 +1,20 @@
+# BEFORE YOU START: this Dockerfile requires your host subscribed to either a
+# Red Hat Server or Free Developer subscription prior to building/running
+# yum install oci-register-machine and oci-systemd-hook on server
+#
+# docker build --rm --no-cache --force-rm -t httpd-systemd .
+# docker run -d --name httpd --tmpfs /tmp --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:ro httpd-systemd
+# docker run -d --name httpd httpd-systemd
+# docker inspect <container_ID> | grep IPAddress
+# curl http://<IP>
+
+FROM compose/rcm-compose-release-01.host.prod.eng.bos.redhat.com/rhel7-atomic-docker:guest-rhel-7.3-docker-70868-20170608213934
+MAINTAINER Martin Jenner "mjenner@redhat.com"
+
+RUN microdnf install --enablerepo=rhel-7-server-rpms httpd; microdnf clean all; systemctl enable httpd.service
+RUN echo "hello from httpd systemd container" > /var/www/html/index.html
+
+STOPSIGNAL SIGRTMIN+3
+EXPOSE 80
+CMD ["/usr/sbin/init"]
+

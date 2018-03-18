@@ -49,7 +49,7 @@ class specific_sm(rhel7_atomic_base):
         self.sub_stuff['install_after'] = None
         self.sub_stuff['test_repo_after'] = None
 
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
         if self.check_registration():
             self.unregister()
         self.run_detached_img()

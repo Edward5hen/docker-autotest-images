@@ -46,7 +46,7 @@ class build_remove(rhel7_atomic_base):
         super(build_remove, self).initialize()
 
         self.load_image()
-        if not self.check_registration:
+        if not self.check_registration():
             self.subscribe()
         # Replace FROM line in dockerfile
         self.replace_line(WORK_DIR, self.sub_stuff['img_name'])

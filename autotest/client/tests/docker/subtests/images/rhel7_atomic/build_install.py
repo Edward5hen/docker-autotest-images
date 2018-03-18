@@ -43,7 +43,7 @@ class build_install(rhel7_atomic_base):
         super(build_install, self).initialize()
 
         self.load_image()
-        if not self.check_registration:
+        if not self.check_registration():
             self.subscribe()
         # Replace FROM line in dockerfile
         self.replace_line(WORK_DIR, self.sub_stuff['img_name'])
@@ -62,7 +62,8 @@ class build_install(rhel7_atomic_base):
         self.sub_stuff['build'] = utils.run(build_cmd, timeout=TIMEOUT_LONG).exit_status
 
         self.loginfo('2. {}'.format(run_cmd))
-        self.sub_stuff['run'] = utils.run(run_cmd).exit_status
+        self.sub_stuff['run'] = utils.run(run_cmd)
+        self.loginfo(self.sub_stuff['run'].stdout)
 
     def postprocess(self):
         super(build_install, self).postprocess()
@@ -71,7 +72,7 @@ class build_install(rhel7_atomic_base):
         self.failif_ne(self.sub_stuff['build'], 0, 'Build failed!!!!!')
 
         self.loginfo('2. Check run result')
-        self.failif_ne(self.sub_stuff['run'], 0, 'Run failed!!!!')
+        self.failif_ne(self.sub_stuff['run'].exit_status, 0, 'Run failed!!!!')
 
     def cleanup(self):
         pass

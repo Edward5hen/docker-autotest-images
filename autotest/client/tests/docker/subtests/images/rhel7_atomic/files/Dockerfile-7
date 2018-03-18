@@ -1,0 +1,25 @@
+# docker build --rm --no-cache --force-rm -f Dockerfile-7 -t microdnf-test7 .
+# docker run -d --name http24 microdnf-test7
+# docker inspect <container_ID> | grep IPAddress
+# curl http://<IP>
+# docker rmi microdnf-test7
+
+FROM compose/rcm-compose-release-01.host.prod.eng.bos.redhat.com/rhel7-atomic-docker:guest-rhel-7.3-docker-70868-20170608213934
+
+MAINTAINER Martin Jenner "mjenner@redhat.com"
+
+RUN microdnf install --enablerepo=rhel-7-server-rpms --enablerepo=rhel-server-rhscl-7-rpms httpd24 && microdnf clean all
+
+# - Missing base rpm should this be added to help out rhscl ?
+RUN microdnf install --enablerepo=rhel-7-server-rpms elfutils-libs && microdnf clean all
+
+RUN echo 'Hello, Docker world.' > /opt/rh/httpd24/root/var/www/html/index.html
+
+EXPOSE 80
+
+# Always run with the scl enabled
+ENTRYPOINT ["scl", "enable", "httpd24", "--", "bash", "-c"]
+
+# Run the application
+CMD ["httpd -DFOREGROUND"]
+

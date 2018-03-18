@@ -44,7 +44,7 @@ class specific_os_release(rhel7_atomic_base):
         self.sub_stuff['para_pretty'] = ''
         self.sub_stuff['para_cpe'] = ''
 
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
         self.run_detached_img()
 
     def run_once(self):
@@ -81,7 +81,7 @@ class specific_os_release(rhel7_atomic_base):
         self.loginfo(name_pretty)
         self.failif(
             not name_pretty.startswith(
-                'Red Hat Enterprise Linux Server 7.' + str(self.config['sub_ver'])),
+                'Red Hat Enterprise Linux Server {}'.format(str(self.config['ver']))),
             'Parameter PRETTY_NAME is wrong!!!'
             )
 
@@ -89,7 +89,7 @@ class specific_os_release(rhel7_atomic_base):
         self.loginfo(name_cpe)
         self.failif_ne(
             name_cpe,
-            'cpe:/o:redhat:enterprise_linux:7.{}:GA:server'.format(str(self.config['sub_ver'])),
+            'cpe:/o:redhat:enterprise_linux:{}:GA:server'.format(str(self.config['ver'])),
             'Parameter CPE_NAME is wrong'
             )
 
