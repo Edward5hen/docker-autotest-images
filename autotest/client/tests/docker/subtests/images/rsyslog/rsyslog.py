@@ -45,11 +45,16 @@ class rsyslog_base(SubSubtest):
         self.sub_stuff['img_name'] = None
         self.regx = '[0-9]{1,3}'
 
-    def load_image(self, location):
+    def load_image(self):
         if not self.check_loaded():
-            cmd = 'cat %s | sudo docker load' % location
-            utils.run(cmd, timeout=300, ignore_status=True)
-            self.loginfo('Image is loaded successfully')
+            cmd = (
+                'sudo docker pull '
+                'brew-pulp-docker01.web.prod.ext.phx2.redhat.com:8888/'
+                'rhel7/rsyslog:{}-{}'.format(self.config['ver'], self.config['rls_ver'])
+                )
+            utils.run(cmd, timeout=10 * 60)
+            self.loginfo('Image is pulled successfully')
+            # Check it again and make self.sub_stuff['img_name'] have value.
             self.check_loaded()
         else:
             self.loginfo('Image does not need to load')
@@ -103,7 +108,7 @@ class install(rsyslog_base):
 
     def initialize(self):
         super(install, self).initialize()
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
         # Uninstall the image first, if there was some older version installed
         try:
             self.loginfo('Uninstall the image first')

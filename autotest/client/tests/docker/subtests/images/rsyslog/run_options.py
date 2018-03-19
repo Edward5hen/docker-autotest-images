@@ -34,7 +34,7 @@ class run_options(rsyslog_base):
     def initialize(self):
         super(run_options, self).initialize()
         # Make sure image is loaded and installed
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
         self.get_installed()
 
         self.sub_stuff['run_result'] = None
@@ -58,7 +58,7 @@ class run_options(rsyslog_base):
         self.sub_stuff['env_vir_image'] = ''
 
     def list_mounted_dir(self):
-        dcr_exec_cmd = 'sudo docker exec rsyslog-docker '
+        dcr_exec_cmd = 'sudo docker exec rsyslog '
         etc_pki_rsyslog_cmd = 'ls -go /etc/pki/rsyslog'
         self.sub_stuff['etc_pki_rsyslog_rst_ctn'] = self.format_output(
             utils.run(dcr_exec_cmd + etc_pki_rsyslog_cmd).stdout)
@@ -78,11 +78,11 @@ class run_options(rsyslog_base):
             utils.run(etc_rsyslog_d_cmd).stdout)
 
         # Sometimes the order is different
-        var_log_cmd = 'ls -go /var/log'
-        self.sub_stuff['var_log_rst_ctn'] = set(self.format_output(
-            utils.run(dcr_exec_cmd + var_log_cmd).stdout))
-        self.sub_stuff['var_log_rst_host'] = set(self.format_output(
-            utils.run(var_log_cmd).stdout))
+#        var_log_cmd = 'ls -go /var/log'
+#        self.sub_stuff['var_log_rst_ctn'] = set(self.format_output(
+#            utils.run(dcr_exec_cmd + var_log_cmd).stdout))
+#        self.sub_stuff['var_log_rst_host'] = set(self.format_output(
+#            utils.run(var_log_cmd).stdout))
 
         var_lib_rsyslog_cmd = 'ls -go /var/lib/rsyslog'
         self.sub_stuff['var_lib_rsyslog_rst_ctn'] = self.format_output(
@@ -103,7 +103,7 @@ class run_options(rsyslog_base):
             utils.run(etc_machine_id_cmd).stdout)
 
     def echo_env_virs(self):
-        dcr_exec_cmd = 'docker exec rsyslog-docker '
+        dcr_exec_cmd = 'docker exec rsyslog '
         echo_name_cmd = "bash -c 'echo $NAME'"
         echo_image_cmd = "bash -c 'echo $IMAGE'"
 
@@ -117,7 +117,7 @@ class run_options(rsyslog_base):
                      self.sub_stuff['env_vir_image'])
 
     def check_env_vir(self):
-        # If testing by loading the image, NAME viriable is rsyslog-docker
+        # If testing by loading the image, NAME viriable is rsyslog
         self.failif(not self.sub_stuff['env_vir_name'].startswith('rsyslog'),
                     'Env viriable NAME is set wrongly!')
         # If testing by loading the image, IMAGE
@@ -175,6 +175,7 @@ class run_options(rsyslog_base):
         """
         super(run_options, self).run_once()
         run_cmd = "sudo atomic run %s" % self.sub_stuff['img_name']
+        self.loginfo('1. {}'.format(run_cmd))
         self.sub_stuff['run_result'] = utils.run(run_cmd, timeout=10)
         time.sleep(5)
 
@@ -183,7 +184,9 @@ class run_options(rsyslog_base):
         self.loginfo('Container name is %s' %
                      self.sub_stuff['ctn_name_rst'].stdout.strip())
 
+        self.loginfo('List mounted directories...')
         self.list_mounted_dir()
+        self.loginfo('Echo environment virables...')
         self.echo_env_virs()
 
     def postprocess(self):
@@ -196,6 +199,9 @@ class run_options(rsyslog_base):
                            ['rsyslog', 'rsyslog-docker'],
                            "Container is wrongly named!")
 
+        self.loginfo('Check mounted directories...')
         self.check_mounted_dir()
+        self.loginfo('Check evironment viriables...')
         self.check_env_vir()
+        self.loginfo('Check CVEs by atomic scan...')
         self.check_cves()

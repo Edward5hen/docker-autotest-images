@@ -29,12 +29,12 @@ class service(sadc_base):
         self.sub_stuff['check_file_rst'] = None
 
         # Make sure images is loaded, installed and run
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
         self.get_run()
 
     def run_once(self):
         super(service, self).run_once()
-        sa_cmd = 'sudo docker exec sadc-docker /usr/lib64/sa/sa1 1 1'
+        sa_cmd = 'sudo docker exec sadc /usr/lib64/sa/sa1 1 1'
         utils.run(sa_cmd)
         self.loginfo('Run command %s' % sa_cmd)
         time.sleep(3)

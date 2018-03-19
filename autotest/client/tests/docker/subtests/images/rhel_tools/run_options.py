@@ -54,13 +54,13 @@ class run_options(rhel_tools_base):
         self.sub_stuff['net_rst_ctn'] = ''
         self.sub_stuff['pid_rst_host'] = ''
         self.sub_stuff['pid_rst_ctn'] = ''
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
 
         # If container is not started, run the image.
         ctns = DockerContainers(self)
         run_cmd = "sudo atomic run %s" % self.sub_stuff['img_name']
-        if 'rhel-tools-docker' not in ctns.list_container_names():
-            self.loginfo('Container rhel-tools-docker is not found')
+        if 'rhel-tools' not in ctns.list_container_names():
+            self.loginfo('Container rhel-tools is not found')
             self.loginfo('Start the container...')
             try:
                 utils.run(run_cmd, timeout=30)
@@ -70,7 +70,7 @@ class run_options(rhel_tools_base):
                     self.loginfo('Container is being started!')
 
     def list_mounted_dir(self):
-        dcr_exec_cmd = 'sudo docker exec rhel-tools-docker '
+        dcr_exec_cmd = 'sudo docker exec rhel-tools '
         ls_run_cmd = 'ls -go /run'
         self.sub_stuff['run_dir_rst_ctn'] = set(self.format_output(
             utils.run(dcr_exec_cmd + ls_run_cmd).stdout)[1:])
@@ -92,7 +92,7 @@ class run_options(rhel_tools_base):
             utils.run(dcr_exec_cmd + host_ctn_cmd).stdout))
 
     def echo_env_virs(self):
-        dcr_exec_cmd = 'docker exec rhel-tools-docker '
+        dcr_exec_cmd = 'docker exec rhel-tools '
         echo_name_cmd = "bash -c 'echo $NAME'"
         echo_host_cmd = "bash -c 'echo $HOST'"
         echo_image_cmd = "bash -c 'echo $IMAGE'"
@@ -106,7 +106,7 @@ class run_options(rhel_tools_base):
 
     def check_env_vir(self):
         self.loginfo('Env virable NAME is %s' % self.sub_stuff['env_vir_name'])
-        # If testing by loading the image, NAME viriable is rhel-tools-docker
+        # If testing by loading the image, NAME viriable is rhel-tools
         self.failif(
                 not self.sub_stuff['env_vir_name'].startswith('rhel-tools'),
                 'Env viriable NAME is set wrongly!'
@@ -147,7 +147,7 @@ class run_options(rhel_tools_base):
         self.loginfo('Host root dir mounted successfully')
 
     def check_ipc(self):
-        cmd_ctn = 'sudo docker exec rhel-tools-docker ipcs -u'
+        cmd_ctn = 'sudo docker exec rhel-tools ipcs -u'
         cmd_host = 'ipcs -u'
         self.sub_stuff['ipc_rst_ctn'] =\
             self.format_output(utils.run(cmd_ctn).stdout)
@@ -159,7 +159,7 @@ class run_options(rhel_tools_base):
         self.loginfo('Container IPC is same as host')
 
     def check_net(self):
-        cmd_ctn = 'sudo docker exec rhel-tools-docker ifconfig'
+        cmd_ctn = 'sudo docker exec rhel-tools ifconfig'
         cmd_host = 'ifconfig'
         self.sub_stuff['net_rst_ctn'] =\
             self.format_output(utils.run(cmd_ctn).stdout)
@@ -171,7 +171,7 @@ class run_options(rhel_tools_base):
         self.loginfo('Container net interfaces are same as host')
 
     def check_process(self):
-        cmd_ctn = 'sudo docker exec rhel-tools-docker ps -Ao pid,fname'
+        cmd_ctn = 'sudo docker exec rhel-tools ps -Ao pid,fname'
         cmd_host = 'ps -Ao pid,fname'
         can_pass = 0
         self.sub_stuff['pid_rst_ctn'] =\

@@ -27,7 +27,7 @@ class rpms_signatures(rhel_tools_base):
 
     def initialize(self):
         super(rpms_signatures, self).initialize()
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
 
     def run_once(self):
         super(rpms_signatures, self).run_once()
@@ -58,3 +58,12 @@ class rpms_signatures(rhel_tools_base):
                         else:
                             fake_list.append(rpm)
         self.loginfo('Fake rpm(s) is/are found:' + str(fake_list))
+
+    def cleanup(self):
+        self.loginfo('CLEANUP: stop container rt_sig')
+        stop_cmd = 'sudo docker stop rt_sig'
+        utils.run(stop_cmd, timeout=20)
+
+        self.loginfo('CLEANUP: remove container rt_sig')
+        rm_cmd = 'sudo docker rm rt_sig'
+        utils.run(rm_cmd)

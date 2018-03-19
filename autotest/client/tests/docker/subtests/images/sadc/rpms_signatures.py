@@ -26,7 +26,7 @@ class rpms_signatures(sadc_base):
 
     def initialize(self):
         super(rpms_signatures, self).initialize()
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
 
     def run_once(self):
         super(rpms_signatures, self).run_once()

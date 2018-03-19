@@ -35,11 +35,16 @@ class rhel_tools_base(SubSubtest):
         self.sub_stuff['img_name'] = None
         self.regx = '[0-9]{1,3}'
 
-    def load_image(self, location):
+    def load_image(self):
         if not self.check_loaded():
-            cmd = 'cat %s | sudo docker load' % location
-            utils.run(cmd, timeout=300, ignore_status=True)
-            self.loginfo('Image is loaded successfully')
+            cmd = (
+                'sudo docker pull '
+                'brew-pulp-docker01.web.prod.ext.phx2.redhat.com:8888/'
+                'rhel7/rhel-tools:{}-{}'.format(self.config['ver'], self.config['rls_ver'])
+                )
+            utils.run(cmd, timeout=10 * 60)
+            self.loginfo('Image is pulled successfully')
+            # Check it again and make self.sub_stuff['img_name'] have value.
             self.check_loaded()
         else:
             self.loginfo('Image does not need to load')
@@ -81,7 +86,7 @@ class run_img(rhel_tools_base):
         super(run_img, self).initialize()
         self.sub_stuff['img_name'] = None
         self.sub_stuff['run_rst'] = None
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
 
     def check_size(self):
         """
@@ -89,8 +94,8 @@ class run_img(rhel_tools_base):
         The correct size must be between 90%-110% of 1.4GB.
         """
         can_pass = 0
-        min_size = 0.9 * 1.4
-        max_size = 1.1 * 1.4
+        min_size = 0.9 * 352
+        max_size = 1.1 * 352
         cmd = "sudo docker images --format={{.Repository}}:{{.Tag}}\
 hope-not-exist{{.Size}} | grep %s" % self.sub_stuff['img_name']
         rst = utils.run(cmd).stdout.split('hope-not-exist')[-1]
@@ -104,6 +109,7 @@ hope-not-exist{{.Size}} | grep %s" % self.sub_stuff['img_name']
     def run_once(self):
         super(run_img, self).run_once()
         run_cmd = "sudo atomic run %s" % self.sub_stuff['img_name']
+        self.loginfo('1. {}'.format(run_cmd))
         try:
             utils.run(run_cmd, timeout=30)
         except error.CmdError, exc:
@@ -115,5 +121,5 @@ hope-not-exist{{.Size}} | grep %s" % self.sub_stuff['img_name']
         self.failif(
             not self.sub_stuff['run_rst'].strip().endswith('#'),
             "Container is not automatically attched!")
-        self.loginfo('Container is automatically attached')
+        self.loginfo('1. Container is automatically attached')
         self.check_size()

@@ -48,11 +48,11 @@ class run_options(sadc_base):
         self.sub_stuff['env_vir_image'] = ''
 
         # Make sure image is loaded and installed
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
         self.get_installed()
 
     def list_mounted_dir(self):
-        dcr_exec_cmd = 'sudo docker exec sadc-docker '
+        dcr_exec_cmd = 'sudo docker exec sadc '
         etc_sysconfig_sysstat_cmd = 'ls -go /etc/sysconfig/sysstat'
         self.sub_stuff['etc_sysconfig_sysstat_rst_ctn'] = self.format_output(
             utils.run(dcr_exec_cmd + etc_sysconfig_sysstat_cmd).stdout)
@@ -80,7 +80,7 @@ class run_options(sadc_base):
             utils.run(root_cmd).stdout))
 
     def echo_env_virs(self):
-        dcr_exec_cmd = 'docker exec sadc-docker '
+        dcr_exec_cmd = 'docker exec sadc '
         echo_name_cmd = "bash -c 'echo $NAME'"
         echo_image_cmd = "bash -c 'echo $IMAGE'"
 

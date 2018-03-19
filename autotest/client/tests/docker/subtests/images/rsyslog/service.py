@@ -30,7 +30,7 @@ class service(rsyslog_base):
     def initialize(self):
         super(service, self).initialize()
         # Make sure images is loaded, installed and run
-        self.load_image(self.config['img_stored_location'])
+        self.load_image()
         self.get_run()
 
         self.sub_stuff['msg'] = 'Test that rsyslog is doing great'
@@ -39,10 +39,12 @@ class service(rsyslog_base):
     def run_once(self):
         super(service, self).run_once()
         logger_cmd = "logger '%s'" % self.sub_stuff['msg']
+        self.loginfo('1. {}'.format(logger_cmd))
         utils.run(logger_cmd)
         time.sleep(3)
 
         tail_cmd = "tail -n 1 /var/log/messages"
+        self.loginfo('2. {}'.format(tail_cmd))
         self.sub_stuff['last_line'] = utils.run(tail_cmd).stdout
 
     def postprocess(self):
