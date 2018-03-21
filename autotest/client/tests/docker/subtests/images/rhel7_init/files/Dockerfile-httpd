@@ -1,0 +1,8 @@
+FROM fkluknav/rhel7-init-docker:extras-rhel-7.3-docker-candidate-94493-20170623110737
+MAINTAINER Edward Shen "weshen@redhat.com"
+
+RUN yum install -y httpd && yum clean all && systemctl enable httpd
+# RUN yum install -y httpd && yum clean all && systemctl enable httpd
+RUN echo "hello from Edward" > /var/www/html/index.html
+
+EXPOSE 80
