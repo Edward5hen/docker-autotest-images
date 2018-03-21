@@ -28,7 +28,7 @@ from autotest.client import utils
 from rhel7_init import rhel7_init_base
 
 
-# Current dir is ..../autotest/client/results/xxx/docker/subtests/images/rhel7_atomic
+# Current dir is ..../autotest/client/results/xxx/docker/subtests/images/rhel7_init
 HALF_1ST = os.getcwd().split('/')[:-6]
 HALF_2ND = ['tests', 'docker', 'subtests', 'images',
             'rhel7_init', 'files', 'Dockerfile-httpd']
