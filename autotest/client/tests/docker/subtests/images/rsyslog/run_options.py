@@ -205,3 +205,8 @@ class run_options(rsyslog_base):
         self.check_env_vir()
         self.loginfo('Check CVEs by atomic scan...')
         self.check_cves()
+
+    def cleanup(self):
+        self.loginfo('CLEANUP: stop and remove contaienr rsyslog')
+        utils.run('sudo docker stop rsyslog', timeout=20)
+        utils.run('sudo docker rm rsyslog')

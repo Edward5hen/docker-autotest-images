@@ -37,6 +37,20 @@ class rhel7_atomic_base(SubSubtest):
         self.sub_stuff['img_name'] = None
         self.regx = '[0-9]{1,3}'
 
+        # get repo names for responding platforms
+        import platform
+        self._cpu_plf = platform.processor()
+        self._cpu_repo_dict = {
+            'x86_64': ['rhel-7-server-rpms',
+                       'rhel7-7-server-extras-rpms'],
+            's390x': ['rhel-7-for-system-z-rpms',
+                      'rhel-7-for-system-z-extras-rpms'],
+            'ppc64le': ['rhel-7-for-power-le-rpms',
+                        'rhel-7-for-power-le-extras-rpms']
+            }
+        self.rpms_repo = self._cpu_repo_dict[self._cpu_plf][0]
+        self.extras_repo = self._cpu_repo_dict[self._cpu_plf][1]
+
     def load_image(self):
         if not self.check_loaded():
             cmd = (
@@ -99,7 +113,7 @@ class rhel7_atomic_base(SubSubtest):
         cmd = ('sudo docker run -d --name=rhel7-atomic '
                '%s /bin/sleep 1000' % self.sub_stuff['img_name'])
         self.loginfo('running a detached conainer just sleeps 1000s....')
-        utils.run(cmd, timeout=10)
+        utils.run(cmd, timeout=30)
 
     def check_registration(self):
         is_registered = False
@@ -131,8 +145,13 @@ class rhel7_atomic_base(SubSubtest):
         for line in fileinput.input(file_dir, inplace=True):
             if line.startswith('FROM '):
                 print 'FROM ' + full_name
+            elif 'rhel-7-server-rpms' in line:
+                print line.replace('rhel-7-server-rpms', self.rpms_repo)
+            elif 'rhel-7-server-extras-rpms' in line:
+                print line.replace('rhel-7-server-extras-rpms',
+                                   self.extras_repo)
             else:
-                print line
+                print line,
 
     def cleanup(self):
         super(rhel7_atomic_base, self).cleanup()

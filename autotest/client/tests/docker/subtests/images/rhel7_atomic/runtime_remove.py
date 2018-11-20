@@ -14,10 +14,10 @@ Setup:
    registry.access.redhat.com/rhel7-atomic /bin/sleep 1000
 Steps:
 1. sudo docker exec rhel7-atomic microdnf install
-    --enablerepo=rhel-7-server-rpms traceroute
+    --enablerepo=$rpms_repo traceroute
 2. sudo docker exec rhel7-atomic traceroute google.com
 3. sudo docker exec rhel7-atomic microdnf remove
-    --enablerepo=rhel-7-server-rpms traceroute
+    --enablerepo=$rpms_repo traceroute
 Expectations:
 1. traceroute is successfully installed
 2. google's traceroute can be successfully printed
@@ -54,10 +54,10 @@ class runtime_remove(rhel7_atomic_base):
         super(runtime_remove, self).run_once()
 
         cmd_install = ('sudo docker exec rhel7-atomic microdnf install '
-                       '--enablerepo=rhel-7-server-rpms traceroute')
+                       '--enablerepo=%s traceroute' % self.rpms_repo)
         cmd_run = 'sudo docker exec rhel7-atomic traceroute google.com'
         cmd_remove = ('sudo docker exec rhel7-atomic microdnf remove '
-                      '--enablerepo=rhel-7-server-rpms traceroute')
+                      '--enablerepo=%s traceroute' % self.rpms_repo)
 
         self.loginfo('1. {}'.format(cmd_install))
         self.sub_stuff['install'] = utils.run(

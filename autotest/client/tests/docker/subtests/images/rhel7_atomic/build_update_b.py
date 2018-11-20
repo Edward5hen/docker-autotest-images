@@ -14,9 +14,9 @@ FROM registry.access.stage.redhat.com/rhel7-atomic
 MAINTAINER Martin Jenner "mjenner@redhat.com"
 
 # We will run update twice to test the case where there are no rpms to update
-RUN microdnf update --enablerepo=rhel-7-server-rpms && microdnf clean all
+RUN microdnf update --enablerepo=$rpms_repo && microdnf clean all
 # Second run should have no rpms to update but not cause build failure
-RUN microdnf update --enablerepo=rhel-7-server-rpms && microdnf clean all
+RUN microdnf update --enablerepo=$rpms_repo && microdnf clean all
 
 EOF
 

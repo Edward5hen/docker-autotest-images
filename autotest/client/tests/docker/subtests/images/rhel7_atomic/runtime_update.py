@@ -13,7 +13,7 @@ Setup:
 3. sudo docker run -d --name=rhel7-atomic /bin/sleep 1000
 Steps:
 1. run "sudo docker exec rhel7-atomic microdnf update
-    --enablerepo=rhel-7-server-rpms" twice
+    --enablerepo=$rpms_repo" twice
 Expectations:
 1. each time of run succeeds with exit code 0.
 Teardown:
@@ -48,11 +48,11 @@ class runtime_update(rhel7_atomic_base):
 
         self.loginfo(
             ('1. run "sudo docker exec rhel7-atomic microdnf'
-             'update --enablerepo=rhel-7-server-rpms" twice')
+             'update --enablerepo=%s" twice' % self.rpms_repo)
             )
         self.loginfo('Run it 1st time')
         cmd = ('sudo docker exec rhel7-atomic microdnf update'
-               ' --enablerepo=rhel-7-server-rpms')
+               ' --enablerepo=%s' % self.rpms_repo)
         self.sub_stuff['update_1st'] =\
             utils.run(cmd, timeout=TIME_OUT_LONG).exit_status
 

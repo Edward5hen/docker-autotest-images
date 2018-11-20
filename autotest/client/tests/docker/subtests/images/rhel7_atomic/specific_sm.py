@@ -14,12 +14,12 @@ Setup:
 3. sudo docker run --name=rhel7-atomic $img_full_name /bin/sleep 1000
 Steps:
 1. sudo docker exec rhel7-atomic microdnf install \
-   --enablerepo=rhel-7-server-rpms traceroute
+   --enablerepo=$rpms_repo traceroute
 2. sudo docker exec rhel7-atomic test -s /etc/yum.repo/redhat.repo
 3. subscribe on host with correct confidentiality
 4. stop and rm rhel7-atomic, then create rhel7-atomic
 5. sudo docker exec rhel7-atomic microdnf install \
-   --enablerepo=rhel-7-server-rpms traceroute"
+   --enablerepo=$rpms_repo traceroute"
 6. sudo docker exec rhel7-atomic test -s /etc/yum.repo/redhat.repo
 Expectations:
 1. some error is raised up that tells that repo is not found
@@ -58,10 +58,10 @@ class specific_sm(rhel7_atomic_base):
         super(specific_sm, self).run_once()
         self.loginfo(
             ('1. sudo docker exec rhel7-atomic microdnf install '
-             '--enablerepo=rhel-7-server-rpms traceroute')
+             '--enablerepo=%s traceroute' % self.rpms_repo)
             )
         cmd_install = ('sudo docker exec rhel7-atomic microdnf install'
-                       ' --enablerepo=rhel-7-server-rpms traceroute')
+                       ' --enablerepo=%s traceroute' % self.rpms_repo)
         self.sub_stuff['install_b4'] = utils.run(
             cmd_install, timeout=30, ignore_status=True
             )
@@ -82,7 +82,7 @@ class specific_sm(rhel7_atomic_base):
 
         self.loginfo(
             ('5. sudo docker exec rhel7-atomic microdnf install '
-             '--enablerepo=rhel-7-server-rpms traceroute')
+             '--enablerepo=%s traceroute' % self.rpms_repo)
             )
         self.sub_stuff['install_after'] = utils.run(
             cmd_install, timeout=900

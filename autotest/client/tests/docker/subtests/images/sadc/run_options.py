@@ -154,3 +154,8 @@ class run_options(sadc_base):
         self.check_mounted_dir()
         self.check_env_vir()
         self.check_cves()
+
+    def cleanup(self):
+        self.loginfo('CLEANUP: stop and rm container sadc')
+        utils.run('sudo docker stop sadc', timeout=20)
+        utils.run('sudo docker rm sadc')

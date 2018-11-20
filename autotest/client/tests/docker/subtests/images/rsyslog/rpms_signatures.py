@@ -58,3 +58,7 @@ class rpms_signatures(rsyslog_base):
                             fake_list.append(rpm)
         self.loginfo('Fake rpm(s) is/are found:' + str(fake_list))
 
+    def cleanup(self):
+        self.loginfo('CLEANUP: stop and rm container rsyslog_sig')
+        utils.run('sudo docker stop rsyslog_sig', timeout=20)
+        utils.run('sudo docker rm rsyslog_sig')

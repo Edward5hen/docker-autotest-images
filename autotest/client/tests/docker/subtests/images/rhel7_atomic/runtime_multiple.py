@@ -14,14 +14,14 @@ Setup:
    registry.access.redhat.com/rhel7-atomic /bin/sleep 1000
 Steps:
 1. sudo docker exec rhel7-atomic microdnf install
-   --enablerepo=rhel-7-server-rpms --enablerepo=rhel-7-rc-rpms
-   traceroute watchdog
+   --enablerepo=$repo --enablerepo=$repo_extras
+   traceroute etcd
 2. sudo docker exec rhel7-atomic microdnf remove
-   --enablerepo=rhel-7-server-rpms --enablerepo=rhel-7-rcl-rpms
-   traceroute watchdog
+   --enablerepo=$repo --enablerepo=$repo_extras
+   traceroute etcd
 3. sudo docker exec rhel7-atomic microdnf install
-   --enablerepo=rhel-7-server-rpms --disablerepo=rhel-7-rc-rpms
-   traceroute watchdog
+   --enablerepo=$repo --disablerepo=$repo_extras
+   traceroute etcd
 Expectations:
 1. both rpms are successfully installed
 2. both rpms are successfully removed
@@ -59,14 +59,14 @@ class runtime_multiple(rhel7_atomic_base):
         super(runtime_multiple, self).run_once()
 
         cmd_install1 = ('sudo docker exec rhel7-atomic microdnf install '
-                        '--enablerepo=rhel-7-server-rpms '
-                        '--enablerepo=rhel-7-server-extras-rpms traceroute etcd')
+                        '--enablerepo=%s --enablerepo=%s traceroute etcd'
+                        % (self.rpms_repo, self.extras_repo))
         cmd_remove = ('sudo docker exec rhel7-atomic microdnf remove '
-                      '--enablerepo=rhel-7-server-rpms '
-                      '--enablerepo=rhel-7-server-extras-rpms traceroute etcd')
+                      '--enablerepo=%s --enablerepo=%s traceroute etcd'
+                      % (self.rpms_repo, self.extras_repo))
         cmd_install2 = ('sudo docker exec rhel7-atomic microdnf install '
-                        '--enablerepo=rhel-7-server-rpms '
-                        '--disablerepo=rhel-7-server-extras-rpms traceroute etcd')
+                        '--enablerepo=%s --disablerepo=%s traceroute etcd'
+                        % (self.rpms_repo, self.extras_repo))
 
         self.loginfo('1. {}'.format(cmd_install1))
         self.sub_stuff['intall1'] =\
